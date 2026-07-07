@@ -1,0 +1,788 @@
+// Muliya Kaizan — Database Schema
+// Source of truth: docs/engineering/01_DATABASE_SCHEMA.md (v1.0.0, Final MVP)
+//
+// Conventions:
+// - Primary keys are UUIDs generated in Postgres via gen_random_uuid() (built-in since PG13).
+// - All timestamps are timestamptz (UTC).
+// - Soft delete (deletedAt) exists only on User, Department, Category per the spec.
+// - Table/column names are snake_case in Postgres via @@map/@map; Prisma fields are camelCase.
+// - CHECK constraints called out in the spec (kaizen_5why.level 1-5, evaluation_scores.score 0-10,
+//   implementations.progress_percent 0-100) are not expressible in Prisma's schema language and
+//   must be added with a follow-up raw-SQL migration (see migration notes).
+// - knowledge_base_entries.search_vector is a generated tsvector column; Prisma has no native
+//   tsvector type, so it is modeled as Unsupported("tsvector") and excluded from the client. The
+//   generated column, its trigger, and its GIN index are added in migration 002 per the spec's
+//   own migration strategy, not in this initial schema.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enumerations
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  EMPLOYEE
+  DEPARTMENT_MANAGER
+  HR
+  CMD
+  SUPER_ADMIN
+}
+
+enum KaizenStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  NEEDS_CHANGES
+  REJECTED
+  APPROVED
+  IMPLEMENTATION_IN_PROGRESS
+  IMPLEMENTATION_COMPLETED
+  BUSINESS_IMPACT_RECORDED
+  REWARD_ISSUED
+  ARCHIVED
+  PUBLISHED_TO_KNOWLEDGE_BASE
+}
+
+enum KaizenPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum EstimatedImpact {
+  LOW
+  MEDIUM
+  HIGH
+  MAJOR
+}
+
+enum ReviewRecommendation {
+  APPROVE
+  REJECT
+  NEEDS_CHANGES
+}
+
+enum ReviewConfidence {
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+enum AttachmentType {
+  IMAGE
+  VIDEO
+  PDF
+  DOCUMENT
+  SPREADSHEET
+  PRESENTATION
+  OTHER
+}
+
+enum AttachmentTag {
+  GENERAL
+  BEFORE
+  AFTER
+  EVIDENCE
+}
+
+enum ImplementationVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum NotificationType {
+  KAIZEN_SUBMITTED
+  KAIZEN_APPROVED
+  KAIZEN_REJECTED
+  KAIZEN_NEEDS_CHANGES
+  KAIZEN_ASSIGNED
+  IMPLEMENTATION_STARTED
+  IMPLEMENTATION_COMPLETED
+  REWARD_ISSUED
+  ACHIEVEMENT_UNLOCKED
+  KNOWLEDGE_BASE_PUBLISHED
+  ANNOUNCEMENT
+  COMMENT_ADDED
+  MENTION
+}
+
+enum TimelineEventType {
+  DRAFT_CREATED
+  DRAFT_UPDATED
+  SUBMITTED
+  REVIEW_STARTED
+  COMMENT_ADDED
+  EVALUATION_SUBMITTED
+  APPROVED
+  REJECTED
+  NEEDS_CHANGES
+  RESUBMITTED
+  IMPLEMENTATION_ASSIGNED
+  IMPLEMENTATION_STARTED
+  IMPLEMENTATION_COMPLETED
+  BUSINESS_IMPACT_RECORDED
+  REWARD_ISSUED
+  ARCHIVED
+  KNOWLEDGE_BASE_PUBLISHED
+  PRIORITY_CHANGED
+  STATUS_CHANGED
+}
+
+enum AchievementRarity {
+  COMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+enum LeaderboardPeriod {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+  ALL_TIME
+}
+
+enum LeaderboardScope {
+  COMPANY
+  DEPARTMENT
+}
+
+// ---------------------------------------------------------------------------
+// organization
+// ---------------------------------------------------------------------------
+
+model Department {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String    @unique @db.VarChar(120)
+  code      String    @unique @db.VarChar(20)
+  managerId String?   @map("manager_id") @db.Uuid
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
+
+  manager   User?  @relation("DepartmentManager", fields: [managerId], references: [id])
+  employees User[] @relation("DepartmentEmployees")
+
+  kaizens              Kaizen[]
+  implementations      Implementation[]
+  knowledgeBaseEntries KnowledgeBaseEntry[]
+  leaderboardSnapshots LeaderboardSnapshot[]
+
+  @@index([managerId])
+  @@index([isActive])
+  @@map("departments")
+}
+
+model Category {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String    @unique @db.VarChar(80)
+  slug        String    @unique @db.VarChar(80)
+  description String?   @db.VarChar(255)
+  icon        String?   @db.VarChar(50)
+  sortOrder   Int       @default(0) @map("sort_order")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
+
+  kaizens              Kaizen[]
+  knowledgeBaseEntries KnowledgeBaseEntry[]
+
+  @@map("categories")
+}
+
+// ---------------------------------------------------------------------------
+// users_and_auth
+// ---------------------------------------------------------------------------
+
+/// Synced from Clerk via webhook; application data stored here.
+model User {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkId      String    @unique @map("clerk_id") @db.VarChar(255)
+  email        String    @unique @db.VarChar(255)
+  firstName    String    @map("first_name") @db.VarChar(100)
+  lastName     String    @map("last_name") @db.VarChar(100)
+  displayName  String    @map("display_name") @db.VarChar(200)
+  avatarUrl    String?   @map("avatar_url")
+  departmentId String?   @map("department_id") @db.Uuid
+  role         UserRole  @default(EMPLOYEE)
+  jobTitle     String?   @map("job_title") @db.VarChar(120)
+  phone        String?   @db.VarChar(20)
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz
+
+  department         Department?  @relation("DepartmentEmployees", fields: [departmentId], references: [id])
+  managedDepartments Department[] @relation("DepartmentManager")
+
+  gamification UserGamification?
+
+  submittedKaizens Kaizen[] @relation("KaizenSubmitter")
+  reviewingKaizens Kaizen[] @relation("KaizenReviewer")
+  owningKaizens    Kaizen[] @relation("KaizenOwner")
+
+  uploadedKaizenAttachments KaizenAttachment[]
+
+  evaluations    Evaluation[]
+  reviewComments ReviewComment[]
+
+  ownedImplementations              Implementation[]           @relation("ImplementationOwner")
+  verifiedImplementations           Implementation[]           @relation("ImplementationVerifier")
+  uploadedImplementationAttachments ImplementationAttachment[]
+
+  recordedBusinessImpacts BusinessImpact[]
+
+  pointsLedgerEntries       PointsLedger[] @relation("PointsLedgerUser")
+  issuedPointsLedgerEntries PointsLedger[] @relation("PointsLedgerIssuer")
+
+  userAchievements UserAchievement[]
+
+  rewardsReceived Reward[] @relation("RewardRecipient")
+  rewardsIssued   Reward[] @relation("RewardIssuer")
+
+  publishedKnowledgeBaseEntries KnowledgeBaseEntry[]
+
+  notifications Notification[]
+  announcements Announcement[]
+
+  updatedPlatformSettings PlatformSetting[]
+
+  timelineEvents TimelineEvent[]
+  auditLogs      AuditLog[]
+
+  @@index([departmentId])
+  @@index([role])
+  @@index([isActive])
+  @@map("users")
+}
+
+/// Denormalized gamification summary for fast dashboard reads.
+model UserGamification {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String   @unique @map("user_id") @db.Uuid
+  totalPoints      Int      @default(0) @map("total_points")
+  ideasSubmitted   Int      @default(0) @map("ideas_submitted")
+  ideasApproved    Int      @default(0) @map("ideas_approved")
+  ideasImplemented Int      @default(0) @map("ideas_implemented")
+  currentRank      Int?     @map("current_rank")
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("user_gamification")
+}
+
+// ---------------------------------------------------------------------------
+// kaizen_core
+// ---------------------------------------------------------------------------
+
+model KaizenNumberSequence {
+  year      Int @id
+  lastValue Int @default(0) @map("last_value")
+
+  @@map("kaizen_number_sequences")
+}
+
+model Kaizen {
+  id                    String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kaizenNumber          String          @unique @map("kaizen_number") @db.VarChar(20)
+  title                 String          @db.VarChar(120)
+  status                KaizenStatus    @default(DRAFT)
+  priority              KaizenPriority  @default(MEDIUM)
+  estimatedImpact       EstimatedImpact @default(MEDIUM) @map("estimated_impact")
+  location              String?         @db.VarChar(120)
+  problemStatement      String?         @map("problem_statement")
+  currentProcess        String?         @map("current_process")
+  proposedSolution      String?         @map("proposed_solution")
+  categoryId            String?         @map("category_id") @db.Uuid
+  departmentId          String          @map("department_id") @db.Uuid
+  submitterId           String          @map("submitter_id") @db.Uuid
+  assignedReviewerId    String?         @map("assigned_reviewer_id") @db.Uuid
+  assignedOwnerId       String?         @map("assigned_owner_id") @db.Uuid
+  implementationDueDate DateTime?       @map("implementation_due_date") @db.Date
+  submittedAt           DateTime?       @map("submitted_at") @db.Timestamptz
+  approvedAt            DateTime?       @map("approved_at") @db.Timestamptz
+  archivedAt            DateTime?       @map("archived_at") @db.Timestamptz
+  createdAt             DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+
+  category         Category?  @relation(fields: [categoryId], references: [id])
+  department       Department @relation(fields: [departmentId], references: [id])
+  submitter        User       @relation("KaizenSubmitter", fields: [submitterId], references: [id])
+  assignedReviewer User?      @relation("KaizenReviewer", fields: [assignedReviewerId], references: [id])
+  assignedOwner    User?      @relation("KaizenOwner", fields: [assignedOwnerId], references: [id])
+
+  fiveW1H             Kaizen5W1H?
+  fiveWhys            Kaizen5Why[]
+  benefits            KaizenBenefit[]
+  attachments         KaizenAttachment[]
+  evaluations         Evaluation[]
+  reviewComments      ReviewComment[]
+  implementation      Implementation?
+  businessImpact      BusinessImpact?
+  timelineEvents      TimelineEvent[]
+  knowledgeBaseEntry  KnowledgeBaseEntry?
+  rewards             Reward[]
+  pointsLedgerEntries PointsLedger[]
+
+  @@index([status])
+  @@index([departmentId])
+  @@index([submitterId])
+  @@index([categoryId])
+  @@index([assignedReviewerId])
+  @@index([submittedAt])
+  @@index([status, departmentId])
+  @@index([submitterId, status])
+  @@map("kaizens")
+}
+
+/// One row per Kaizen.
+model Kaizen5W1H {
+  id            String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kaizenId      String  @unique @map("kaizen_id") @db.Uuid
+  what          String?
+  whereLocation String? @map("where_location")
+  whenOccurs    String? @map("when_occurs")
+  who           String?
+  why           String?
+  how           String?
+
+  kaizen Kaizen @relation(fields: [kaizenId], references: [id], onDelete: Cascade)
+
+  @@map("kaizen_5w1h")
+}
+
+/// Five rows per completed Kaizen (levels 1-5).
+/// NOTE: `level` should additionally be constrained CHECK (level BETWEEN 1 AND 5) —
+/// add via a follow-up raw-SQL migration; Prisma's schema language cannot express CHECK constraints.
+model Kaizen5Why {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kaizenId String @map("kaizen_id") @db.Uuid
+  level    Int
+  answer   String
+
+  kaizen Kaizen @relation(fields: [kaizenId], references: [id], onDelete: Cascade)
+
+  @@unique([kaizenId, level])
+  @@map("kaizen_5why")
+}
+
+model KaizenBenefit {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kaizenId    String  @map("kaizen_id") @db.Uuid
+  benefitType String  @map("benefit_type") @db.VarChar(50)
+  description String  @db.VarChar(500)
+  isCustom    Boolean @default(false) @map("is_custom")
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  kaizen Kaizen @relation(fields: [kaizenId], references: [id], onDelete: Cascade)
+
+  @@map("kaizen_benefits")
+}
+
+/// Max 10 attachments per Kaizen — enforced at the application layer.
+model KaizenAttachment {
+  id                  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kaizenId            String         @map("kaizen_id") @db.Uuid
+  fileName            String         @map("file_name") @db.VarChar(255)
+  fileType            AttachmentType @map("file_type")
+  mimeType            String         @map("mime_type") @db.VarChar(100)
+  fileSizeBytes       BigInt         @map("file_size_bytes")
+  cloudinaryPublicId  String         @map("cloudinary_public_id") @db.VarChar(255)
+  cloudinaryUrl       String         @map("cloudinary_url")
+  cloudinarySecureUrl String         @map("cloudinary_secure_url")
+  tag                 AttachmentTag  @default(GENERAL)
+  caption             String?        @db.VarChar(255)
+  sortOrder           Int            @default(0) @map("sort_order")
+  uploadedById        String         @map("uploaded_by_id") @db.Uuid
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  kaizen     Kaizen @relation(fields: [kaizenId], references: [id], onDelete: Cascade)
+  uploadedBy User   @relation(fields: [uploadedById], references: [id])
+
+  @@map("kaizen_attachments")
+}
+
+// ---------------------------------------------------------------------------
+// review_and_scoring
+// ---------------------------------------------------------------------------
+
+/// Configurable by Super Admin. MVP ships with 5 default parameters.
+model ScoringParameter {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @db.VarChar(100)
+  slug        String   @unique @db.VarChar(100)
+  description String
+  guidelines  String
+  maxScore    Int      @default(10) @map("max_score")
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  evaluationScores EvaluationScore[]
+
+  @@map("scoring_parameters")
+}
+
+/// One final evaluation per reviewer per Kaizen (MVP: one department manager).
+model Evaluation {
+  id             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kaizenId       String               @map("kaizen_id") @db.Uuid
+  reviewerId     String               @map("reviewer_id") @db.Uuid
+  recommendation ReviewRecommendation
+  confidence     ReviewConfidence?
+  remarks        String?
+  totalScore     Int                  @map("total_score")
+  overallRating  Decimal              @map("overall_rating") @db.Decimal(3, 1)
+  isSubmitted    Boolean              @default(false) @map("is_submitted")
+  submittedAt    DateTime?            @map("submitted_at") @db.Timestamptz
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz
+
+  kaizen   Kaizen @relation(fields: [kaizenId], references: [id])
+  reviewer User   @relation(fields: [reviewerId], references: [id])
+
+  scores EvaluationScore[]
+
+  @@unique([kaizenId, reviewerId])
+  @@map("evaluations")
+}
+
+/// NOTE: `score` should additionally be constrained CHECK (score BETWEEN 0 AND 10) —
+/// add via a follow-up raw-SQL migration.
+model EvaluationScore {
+  id           String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  evaluationId String @map("evaluation_id") @db.Uuid
+  parameterId  String @map("parameter_id") @db.Uuid
+  score        Int
+
+  evaluation Evaluation       @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  parameter  ScoringParameter @relation(fields: [parameterId], references: [id])
+
+  @@unique([evaluationId, parameterId])
+  @@map("evaluation_scores")
+}
+
+/// Comments cannot be edited after Kaizen approval (application rule).
+model ReviewComment {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kaizenId   String   @map("kaizen_id") @db.Uuid
+  authorId   String   @map("author_id") @db.Uuid
+  parentId   String?  @map("parent_id") @db.Uuid
+  body       String
+  isResolved Boolean  @default(false) @map("is_resolved")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  kaizen  Kaizen          @relation(fields: [kaizenId], references: [id], onDelete: Cascade)
+  author  User            @relation(fields: [authorId], references: [id])
+  parent  ReviewComment?  @relation("ReviewCommentReplies", fields: [parentId], references: [id])
+  replies ReviewComment[] @relation("ReviewCommentReplies")
+
+  @@map("review_comments")
+}
+
+// ---------------------------------------------------------------------------
+// implementation
+// ---------------------------------------------------------------------------
+
+/// One row per Kaizen after approval.
+/// NOTE: `progress_percent` should additionally be constrained CHECK (progress_percent BETWEEN 0 AND 100) —
+/// add via a follow-up raw-SQL migration.
+model Implementation {
+  id                   String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kaizenId             String                           @unique @map("kaizen_id") @db.Uuid
+  ownerId              String                           @map("owner_id") @db.Uuid
+  assignedDepartmentId String                           @map("assigned_department_id") @db.Uuid
+  description          String?
+  progressPercent      Int                              @default(0) @map("progress_percent")
+  estimatedCost        Decimal?                         @map("estimated_cost") @db.Decimal(12, 2)
+  actualCost           Decimal?                         @map("actual_cost") @db.Decimal(12, 2)
+  timeTakenDays        Int?                             @map("time_taken_days")
+  startedAt            DateTime?                        @map("started_at") @db.Timestamptz
+  completedAt          DateTime?                        @map("completed_at") @db.Timestamptz
+  completionNotes      String?                          @map("completion_notes")
+  verificationStatus   ImplementationVerificationStatus @default(PENDING) @map("verification_status")
+  verifiedById         String?                          @map("verified_by_id") @db.Uuid
+  verifiedAt           DateTime?                        @map("verified_at") @db.Timestamptz
+  createdAt            DateTime                         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime                         @updatedAt @map("updated_at") @db.Timestamptz
+
+  kaizen             Kaizen     @relation(fields: [kaizenId], references: [id])
+  owner              User       @relation("ImplementationOwner", fields: [ownerId], references: [id])
+  assignedDepartment Department @relation(fields: [assignedDepartmentId], references: [id])
+  verifiedBy         User?      @relation("ImplementationVerifier", fields: [verifiedById], references: [id])
+
+  attachments ImplementationAttachment[]
+
+  @@map("implementations")
+}
+
+model ImplementationAttachment {
+  id                  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  implementationId    String         @map("implementation_id") @db.Uuid
+  fileName            String         @map("file_name") @db.VarChar(255)
+  fileType            AttachmentType @map("file_type")
+  mimeType            String         @map("mime_type") @db.VarChar(100)
+  fileSizeBytes       BigInt         @map("file_size_bytes")
+  cloudinaryPublicId  String         @map("cloudinary_public_id") @db.VarChar(255)
+  cloudinarySecureUrl String         @map("cloudinary_secure_url")
+  uploadedById        String         @map("uploaded_by_id") @db.Uuid
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  implementation Implementation @relation(fields: [implementationId], references: [id], onDelete: Cascade)
+  uploadedBy     User           @relation(fields: [uploadedById], references: [id])
+
+  @@map("implementation_attachments")
+}
+
+// ---------------------------------------------------------------------------
+// business_impact
+// ---------------------------------------------------------------------------
+
+model BusinessImpact {
+  id                              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kaizenId                        String   @unique @map("kaizen_id") @db.Uuid
+  moneySaved                      Decimal? @map("money_saved") @db.Decimal(14, 2)
+  hoursSaved                      Decimal? @map("hours_saved") @db.Decimal(10, 2)
+  employeesBenefited              Int?     @map("employees_benefited")
+  customersBenefited              Int?     @map("customers_benefited")
+  processImprovement              Boolean  @default(false) @map("process_improvement")
+  qualityImprovement              Boolean  @default(false) @map("quality_improvement")
+  safetyImprovement               Boolean  @default(false) @map("safety_improvement")
+  productivityImprovement         Boolean  @default(false) @map("productivity_improvement")
+  customerSatisfactionImprovement Boolean  @default(false) @map("customer_satisfaction_improvement")
+  remarks                         String?
+  recordedById                    String   @map("recorded_by_id") @db.Uuid
+  createdAt                       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  kaizen     Kaizen @relation(fields: [kaizenId], references: [id])
+  recordedBy User   @relation(fields: [recordedById], references: [id])
+
+  @@map("business_impacts")
+}
+
+// ---------------------------------------------------------------------------
+// gamification_mvp
+// ---------------------------------------------------------------------------
+
+/// Append-only points history.
+model PointsLedger {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  amount     Int
+  reason     String   @db.VarChar(100)
+  kaizenId   String?  @map("kaizen_id") @db.Uuid
+  issuedById String?  @map("issued_by_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user     User    @relation("PointsLedgerUser", fields: [userId], references: [id])
+  kaizen   Kaizen? @relation(fields: [kaizenId], references: [id])
+  issuedBy User?   @relation("PointsLedgerIssuer", fields: [issuedById], references: [id])
+
+  @@map("points_ledger")
+}
+
+model Achievement {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code          String            @unique @db.VarChar(50)
+  name          String            @db.VarChar(100)
+  description   String            @db.VarChar(255)
+  icon          String            @db.VarChar(50)
+  rarity        AchievementRarity @default(COMMON)
+  pointsAwarded Int               @default(25) @map("points_awarded")
+  criteria      Json
+  isActive      Boolean           @default(true) @map("is_active")
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz
+
+  userAchievements UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  achievementId String   @map("achievement_id") @db.Uuid
+  earnedAt      DateTime @default(now()) @map("earned_at") @db.Timestamptz
+
+  user        User        @relation(fields: [userId], references: [id])
+  achievement Achievement @relation(fields: [achievementId], references: [id])
+
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
+
+model Reward {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  kaizenId   String   @map("kaizen_id") @db.Uuid
+  points     Int
+  reason     String   @db.VarChar(255)
+  issuedById String?  @map("issued_by_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user     User   @relation("RewardRecipient", fields: [userId], references: [id])
+  kaizen   Kaizen @relation(fields: [kaizenId], references: [id])
+  issuedBy User?  @relation("RewardIssuer", fields: [issuedById], references: [id])
+
+  @@map("rewards")
+}
+
+/// Precomputed rankings refreshed on reward events and every 5 minutes (cron).
+model LeaderboardSnapshot {
+  id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  period       LeaderboardPeriod
+  scope        LeaderboardScope
+  departmentId String?           @map("department_id") @db.Uuid
+  rankings     Json
+  computedAt   DateTime          @map("computed_at") @db.Timestamptz
+
+  department Department? @relation(fields: [departmentId], references: [id])
+
+  @@unique([period, scope, departmentId])
+  @@map("leaderboard_snapshots")
+}
+
+// ---------------------------------------------------------------------------
+// knowledge_base
+// ---------------------------------------------------------------------------
+
+model KnowledgeBaseEntry {
+  id            String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kaizenId      String                   @unique @map("kaizen_id") @db.Uuid
+  title         String                   @db.VarChar(200)
+  summary       String
+  problem       String
+  solution      String
+  benefits      String
+  departmentId  String                   @map("department_id") @db.Uuid
+  categoryId    String                   @map("category_id") @db.Uuid
+  tags          String[]                 @default([])
+  publishedById String                   @map("published_by_id") @db.Uuid
+  publishedAt   DateTime                 @map("published_at") @db.Timestamptz
+  /// Generated full-text search column; added + indexed (GIN) via raw-SQL migration 002.
+  searchVector  Unsupported("tsvector")?
+
+  kaizen      Kaizen     @relation(fields: [kaizenId], references: [id])
+  department  Department @relation(fields: [departmentId], references: [id])
+  category    Category   @relation(fields: [categoryId], references: [id])
+  publishedBy User       @relation(fields: [publishedById], references: [id])
+
+  @@index([tags], type: Gin)
+  @@map("knowledge_base_entries")
+}
+
+// ---------------------------------------------------------------------------
+// notifications
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id         String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String           @map("user_id") @db.Uuid
+  type       NotificationType
+  title      String           @db.VarChar(200)
+  body       String
+  entityType String?          @map("entity_type") @db.VarChar(50)
+  entityId   String?          @map("entity_id") @db.Uuid
+  isRead     Boolean          @default(false) @map("is_read")
+  readAt     DateTime?        @map("read_at") @db.Timestamptz
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+// ---------------------------------------------------------------------------
+// platform
+// ---------------------------------------------------------------------------
+
+model Announcement {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String     @db.VarChar(200)
+  body        String
+  authorId    String     @map("author_id") @db.Uuid
+  targetRoles UserRole[] @map("target_roles")
+  isPublished Boolean    @default(false) @map("is_published")
+  publishedAt DateTime?  @map("published_at") @db.Timestamptz
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+
+  author User @relation(fields: [authorId], references: [id])
+
+  @@map("announcements")
+}
+
+model PlatformSetting {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key         String   @unique @db.VarChar(100)
+  value       Json
+  description String?  @db.VarChar(255)
+  updatedById String?  @map("updated_by_id") @db.Uuid
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  updatedBy User? @relation(fields: [updatedById], references: [id])
+
+  @@map("platform_settings")
+}
+
+// ---------------------------------------------------------------------------
+// audit_and_timeline
+// ---------------------------------------------------------------------------
+
+/// Immutable activity log per Kaizen. No UPDATE/DELETE permitted (application rule).
+model TimelineEvent {
+  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kaizenId    String            @map("kaizen_id") @db.Uuid
+  eventType   TimelineEventType @map("event_type")
+  actorId     String?           @map("actor_id") @db.Uuid
+  description String
+  metadata    Json?
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz
+
+  kaizen Kaizen @relation(fields: [kaizenId], references: [id], onDelete: Cascade)
+  actor  User?  @relation(fields: [actorId], references: [id])
+
+  @@index([kaizenId, createdAt(sort: Desc)])
+  @@map("timeline_events")
+}
+
+/// Immutable system-wide audit trail. No UPDATE/DELETE permitted (application rule).
+model AuditLog {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String?   @map("user_id") @db.Uuid
+  userRole      UserRole? @map("user_role")
+  action        String    @db.VarChar(100)
+  entityType    String    @map("entity_type") @db.VarChar(50)
+  entityId      String    @map("entity_id") @db.Uuid
+  previousValue Json?     @map("previous_value")
+  newValue      Json?     @map("new_value")
+  ipAddress     String?   @map("ip_address") @db.Inet
+  userAgent     String?   @map("user_agent")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
