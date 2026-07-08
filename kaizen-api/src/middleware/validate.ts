@@ -24,7 +24,17 @@ export function validate<T>(schema: ZodSchema<T>, part: RequestPart = "body") {
       return;
     }
 
-    req[part] = result.data;
+    // Express 5 defines `req.query` as a getter-only accessor, so a plain assignment
+    // (`req[part] = result.data`) throws for part === "query". `req.body`/`req.params` are
+    // still writable, but Object.defineProperty works uniformly for all three and is required
+    // for "query" specifically (the property is `configurable: true`, which is what makes this
+    // redefinition possible).
+    Object.defineProperty(req, part, {
+      value: result.data,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
     next();
   };
 }
