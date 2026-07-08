@@ -1,17 +1,4 @@
-import type { UserRole } from "../constants/roles.js";
-
-export interface AuthContext {
-  clerkId: string;
-  sessionId: string | null;
-}
-
-export interface RequestUser {
-  id: string;
-  clerkId: string;
-  email: string;
-  role: UserRole;
-  departmentId: string | null;
-}
+import type { AuthContext, RequestUser } from "../modules/auth/auth.types.js";
 
 declare global {
   namespace Express {
