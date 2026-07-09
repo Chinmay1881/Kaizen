@@ -8,6 +8,8 @@ import {
   type ListKaizensQuerySchema,
 } from "../../modules/kaizens/kaizen.schema.js";
 import { kaizenService } from "../../modules/kaizens/kaizen.service.js";
+import { createCommentSchema, reviewActionSchema } from "../../modules/reviews/review.schema.js";
+import { reviewService } from "../../modules/reviews/review.service.js";
 import { ApiError } from "../../utils/api-error.js";
 import { sendSuccess } from "../../utils/api-response.js";
 
@@ -98,6 +100,88 @@ kaizensRouter.post("/:id/submit", async (req, res, next) => {
     const requester = requireUser(req);
     const result = await kaizenService.submit(requireParam(req, "id"), requester);
     sendSuccess(res, result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+kaizensRouter.post("/:id/review/start", async (req, res, next) => {
+  try {
+    const requester = requireUser(req);
+    const result = await reviewService.startReview(requireParam(req, "id"), requester);
+    sendSuccess(res, result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+kaizensRouter.post("/:id/review/approve", validate(reviewActionSchema), async (req, res, next) => {
+  try {
+    const requester = requireUser(req);
+    const result = await reviewService.approve(requireParam(req, "id"), requester, req.body.notes);
+    sendSuccess(res, result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+kaizensRouter.post("/:id/review/reject", validate(reviewActionSchema), async (req, res, next) => {
+  try {
+    const requester = requireUser(req);
+    const result = await reviewService.reject(requireParam(req, "id"), requester, req.body.notes);
+    sendSuccess(res, result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+kaizensRouter.post(
+  "/:id/review/needs-changes",
+  validate(reviewActionSchema),
+  async (req, res, next) => {
+    try {
+      const requester = requireUser(req);
+      const result = await reviewService.requestChanges(
+        requireParam(req, "id"),
+        requester,
+        req.body.notes,
+      );
+      sendSuccess(res, result);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+kaizensRouter.get("/:id/comments", async (req, res, next) => {
+  try {
+    const requester = requireUser(req);
+    const comments = await reviewService.listComments(requireParam(req, "id"), requester);
+    sendSuccess(res, comments);
+  } catch (error) {
+    next(error);
+  }
+});
+
+kaizensRouter.post("/:id/comments", validate(createCommentSchema), async (req, res, next) => {
+  try {
+    const requester = requireUser(req);
+    const comment = await reviewService.addComment(requireParam(req, "id"), requester, req.body);
+    sendSuccess(res, comment, 201);
+  } catch (error) {
+    next(error);
+  }
+});
+
+kaizensRouter.patch("/:id/comments/:commentId/resolve", async (req, res, next) => {
+  try {
+    const requester = requireUser(req);
+    const comment = await reviewService.resolveComment(
+      requireParam(req, "id"),
+      requireParam(req, "commentId"),
+      requester,
+    );
+    sendSuccess(res, comment);
   } catch (error) {
     next(error);
   }
