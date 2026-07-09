@@ -130,9 +130,8 @@ class ReviewService {
   }
 
   /** POST /kaizens/:id/review/approve — UNDER_REVIEW -> APPROVED.
-   * NOTE: the API spec's documented precondition ("Evaluation submitted with recommendation:
-   * APPROVE") is intentionally not enforced — it depends on the Scoring Engine (Evaluation
-   * model), which is a separate, not-yet-built milestone. See Known Limitations. */
+   * Precondition (per the API spec, enforced since Milestone 7 / Scoring Engine): the acting
+   * manager must have a submitted Evaluation on this Kaizen recommending APPROVE. */
   async approve(
     kaizenId: string,
     requester: Requester,
@@ -140,6 +139,7 @@ class ReviewService {
   ): Promise<ReviewActionResult> {
     const kaizen = await kaizenService.getById(kaizenId, requester);
     this.assertCanManage(kaizen, requester);
+    await this.assertEvaluationRecommends(kaizenId, requester, "APPROVE");
 
     const updated = await workflowService.transition({
       kaizenId,
@@ -157,8 +157,8 @@ class ReviewService {
     };
   }
 
-  /** POST /kaizens/:id/review/reject — UNDER_REVIEW -> REJECTED. Same evaluation-precondition
-   * caveat as `approve`. */
+  /** POST /kaizens/:id/review/reject — UNDER_REVIEW -> REJECTED. Same evaluation precondition as
+   * `approve`, requiring a submitted Evaluation recommending REJECT. */
   async reject(
     kaizenId: string,
     requester: Requester,
@@ -166,6 +166,7 @@ class ReviewService {
   ): Promise<ReviewActionResult> {
     const kaizen = await kaizenService.getById(kaizenId, requester);
     this.assertCanManage(kaizen, requester);
+    await this.assertEvaluationRecommends(kaizenId, requester, "REJECT");
 
     const updated = await workflowService.transition({
       kaizenId,
@@ -297,6 +298,30 @@ class ReviewService {
         "FORBIDDEN",
         "Only the department manager for this Kaizen can perform review actions.",
         403,
+      );
+    }
+  }
+
+  /** Precondition on Approve/Reject per docs/engineering/02_API_SPECIFICATION.md: "Evaluation
+   * submitted with recommendation: APPROVE/REJECT". Deliberately not enforced by Milestone 6 (the
+   * Scoring Engine didn't exist yet — see PROJECT_STATUS.md Known Limitations); enforced now that
+   * it does (Milestone 7). Checks the acting manager's own evaluation, matching the
+   * `(kaizenId, reviewerId)` uniqueness the schema already models. */
+  private async assertEvaluationRecommends(
+    kaizenId: string,
+    requester: Requester,
+    recommendation: "APPROVE" | "REJECT",
+  ): Promise<void> {
+    const evaluation = await prisma.evaluation.findUnique({
+      where: { kaizenId_reviewerId: { kaizenId, reviewerId: requester.id } },
+      select: { isSubmitted: true, recommendation: true },
+    });
+
+    if (!evaluation?.isSubmitted || evaluation.recommendation !== recommendation) {
+      throw new ApiError(
+        "INVALID_STATE_TRANSITION",
+        `Submit an evaluation with recommendation ${recommendation} before ${recommendation === "APPROVE" ? "approving" : "rejecting"} this Kaizen.`,
+        409,
       );
     }
   }

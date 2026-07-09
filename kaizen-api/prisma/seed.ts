@@ -2,8 +2,9 @@
 // Categories are the 12 fixed values from docs/product/02_PRODUCT_REQUIREMENTS.md (KAIZEN-001),
 // which also describes the Step 1 category cards as needing an icon + short description each.
 // Icon names are Lucide component names (matches docs/design/01_DESIGN_SYSTEM.md: "Lucide React").
-// Scoring parameters / achievements / platform settings are deliberately NOT seeded here yet —
-// they belong to the Review & Scoring and Gamification milestones, which haven't started.
+// Scoring parameters are the 5 fixed MVP defaults from SCORE-001 / docs/engineering/01_DATABASE_SCHEMA.md
+// (Milestone 7). Achievements / platform settings are still deliberately NOT seeded — Gamification
+// hasn't started.
 //
 // The single "General" department is a pragmatic bootstrap, not something the docs asked for:
 // kaizens.department_id is NOT NULL, but real department management is Admin Panel scope (not
@@ -14,6 +15,46 @@
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
+
+/** The 5 MVP evaluation parameters from SCORE-001. Guidelines follow the same 4-band pattern
+ * SCORE-001 gives as a worked example for Problem Identification ("Every parameter should include
+ * similar guidance") — reused verbatim for that one, authored analogously for the other 4. */
+const SCORING_PARAMETERS: Array<{
+  name: string;
+  description: string;
+  guidelines: string;
+}> = [
+  {
+    name: "Problem Identification",
+    description: "How clearly the problem is identified and articulated.",
+    guidelines:
+      "0-2: Problem unclear. 3-5: Minor issue. 6-8: Important operational issue. 9-10: Critical business problem.",
+  },
+  {
+    name: "Creative Thinking",
+    description: "How original and inventive the proposed solution is.",
+    guidelines:
+      "0-2: Minimal originality. 3-5: Some creativity. 6-8: Innovative approach. 9-10: Highly original, breakthrough thinking.",
+  },
+  {
+    name: "Implementation",
+    description: "How feasible the proposed solution is to actually execute.",
+    guidelines:
+      "0-2: Impractical. 3-5: Challenging, significant barriers. 6-8: Feasible with reasonable effort. 9-10: Straightforward to implement.",
+  },
+  {
+    name: "Usefulness",
+    description: "The practical value and benefit the solution delivers.",
+    guidelines:
+      "0-2: Minimal value. 3-5: Limited benefit. 6-8: Clear, meaningful benefit. 9-10: Significant organizational value.",
+  },
+  {
+    name: "Maintenance / Sustainability",
+    description: "How easily the improvement can be sustained over time.",
+    guidelines:
+      "0-2: Unsustainable without constant effort. 3-5: Needs ongoing attention. 6-8: Mostly self-sustaining. 9-10: Fully self-sustaining and institutionalized.",
+  },
+];
 
 const CATEGORIES: Array<{ name: string; icon: string; description: string }> = [
   {
@@ -81,6 +122,28 @@ async function main() {
     create: { name: "General", code: "GEN" },
   });
   console.log("Seeded bootstrap department (General / GEN).");
+
+  for (const [index, parameter] of SCORING_PARAMETERS.entries()) {
+    const slug = slugify(parameter.name);
+    await prisma.scoringParameter.upsert({
+      where: { slug },
+      update: {
+        name: parameter.name,
+        description: parameter.description,
+        guidelines: parameter.guidelines,
+        sortOrder: index,
+      },
+      create: {
+        name: parameter.name,
+        slug,
+        description: parameter.description,
+        guidelines: parameter.guidelines,
+        maxScore: 10,
+        sortOrder: index,
+      },
+    });
+  }
+  console.log(`Seeded ${SCORING_PARAMETERS.length} scoring parameters.`);
 }
 
 main()

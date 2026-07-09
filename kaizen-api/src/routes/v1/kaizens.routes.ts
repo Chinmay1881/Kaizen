@@ -10,6 +10,8 @@ import {
 import { kaizenService } from "../../modules/kaizens/kaizen.service.js";
 import { createCommentSchema, reviewActionSchema } from "../../modules/reviews/review.schema.js";
 import { reviewService } from "../../modules/reviews/review.service.js";
+import { upsertEvaluationSchema } from "../../modules/scoring/scoring.schema.js";
+import { scoringService } from "../../modules/scoring/scoring.service.js";
 import { ApiError } from "../../utils/api-error.js";
 import { sendSuccess } from "../../utils/api-response.js";
 
@@ -182,6 +184,50 @@ kaizensRouter.patch("/:id/comments/:commentId/resolve", async (req, res, next) =
       requester,
     );
     sendSuccess(res, comment);
+  } catch (error) {
+    next(error);
+  }
+});
+
+kaizensRouter.get("/:id/evaluation", async (req, res, next) => {
+  try {
+    const requester = requireUser(req);
+    const evaluation = await scoringService.getEvaluation(requireParam(req, "id"), requester);
+    sendSuccess(res, evaluation);
+  } catch (error) {
+    next(error);
+  }
+});
+
+kaizensRouter.put("/:id/evaluation", validate(upsertEvaluationSchema), async (req, res, next) => {
+  try {
+    const requester = requireUser(req);
+    const evaluation = await scoringService.upsertEvaluation(
+      requireParam(req, "id"),
+      requester,
+      req.body,
+    );
+    sendSuccess(res, evaluation);
+  } catch (error) {
+    next(error);
+  }
+});
+
+kaizensRouter.post("/:id/evaluation/submit", async (req, res, next) => {
+  try {
+    const requester = requireUser(req);
+    const evaluation = await scoringService.submitEvaluation(requireParam(req, "id"), requester);
+    sendSuccess(res, evaluation);
+  } catch (error) {
+    next(error);
+  }
+});
+
+kaizensRouter.get("/:id/score", async (req, res, next) => {
+  try {
+    const requester = requireUser(req);
+    const score = await scoringService.getScore(requireParam(req, "id"), requester);
+    sendSuccess(res, score);
   } catch (error) {
     next(error);
   }
