@@ -3,8 +3,9 @@
 // which also describes the Step 1 category cards as needing an icon + short description each.
 // Icon names are Lucide component names (matches docs/design/01_DESIGN_SYSTEM.md: "Lucide React").
 // Scoring parameters are the 5 fixed MVP defaults from SCORE-001 / docs/engineering/01_DATABASE_SCHEMA.md
-// (Milestone 7). Achievements / platform settings are still deliberately NOT seeded — Gamification
-// hasn't started.
+// (Milestone 7). Achievements (10) and platform settings (8) are the MVP gamification reference data
+// from docs/engineering/01_DATABASE_SCHEMA.md (Milestone 9) — criteria JSON shapes are evaluated by
+// GamificationService.meetsCriteria.
 //
 // The single "General" department is a pragmatic bootstrap, not something the docs asked for:
 // kaizens.department_id is NOT NULL, but real department management is Admin Panel scope (not
@@ -87,6 +88,132 @@ const CATEGORIES: Array<{ name: string; icon: string; description: string }> = [
   { name: "Other", icon: "MoreHorizontal", description: "Anything that doesn't fit elsewhere" },
 ];
 
+/** The 10 MVP achievements from docs/engineering/01_DATABASE_SCHEMA.md. `criteria` shapes are
+ * consumed by GamificationService.meetsCriteria — keep the two in sync if either changes. */
+const ACHIEVEMENTS: Array<{
+  code: string;
+  name: string;
+  description: string;
+  icon: string;
+  rarity: "COMMON" | "RARE" | "EPIC" | "LEGENDARY";
+  criteria: Record<string, unknown>;
+}> = [
+  {
+    code: "FIRST_KAIZEN",
+    name: "First Kaizen",
+    description: "Submit your first Kaizen idea.",
+    icon: "Lightbulb",
+    rarity: "COMMON",
+    criteria: { type: "IDEAS_SUBMITTED", threshold: 1 },
+  },
+  {
+    code: "FIVE_SUBMISSIONS",
+    name: "Idea Machine",
+    description: "Submit 5 Kaizen ideas.",
+    icon: "FileStack",
+    rarity: "COMMON",
+    criteria: { type: "IDEAS_SUBMITTED", threshold: 5 },
+  },
+  {
+    code: "FIRST_APPROVAL",
+    name: "First Approval",
+    description: "Get your first Kaizen idea approved.",
+    icon: "CheckCircle2",
+    rarity: "COMMON",
+    criteria: { type: "IDEAS_APPROVED", threshold: 1 },
+  },
+  {
+    code: "FIVE_APPROVALS",
+    name: "Proven Improver",
+    description: "Get 5 Kaizen ideas approved.",
+    icon: "CheckCheck",
+    rarity: "RARE",
+    criteria: { type: "IDEAS_APPROVED", threshold: 5 },
+  },
+  {
+    code: "IMPLEMENTER",
+    name: "Implementer",
+    description: "Have one of your ideas fully implemented.",
+    icon: "Rocket",
+    rarity: "RARE",
+    criteria: { type: "IDEAS_IMPLEMENTED", threshold: 1 },
+  },
+  {
+    code: "IMPACT_MAKER",
+    name: "Impact Maker",
+    description: "Have business impact recorded for one of your ideas.",
+    icon: "TrendingUp",
+    rarity: "RARE",
+    criteria: { type: "BUSINESS_IMPACT_COUNT", threshold: 1 },
+  },
+  {
+    code: "TOP_CONTRIBUTOR",
+    name: "Top Contributor",
+    description: "Rank in the top 10 of the monthly company leaderboard.",
+    icon: "Trophy",
+    rarity: "EPIC",
+    criteria: { type: "LEADERBOARD_RANK", maxRank: 10 },
+  },
+  {
+    code: "INNOVATION_CHAMPION",
+    name: "Innovation Champion",
+    description: "Get 10 Kaizen ideas approved.",
+    icon: "Sparkles",
+    rarity: "EPIC",
+    criteria: { type: "IDEAS_APPROVED", threshold: 10 },
+  },
+  {
+    code: "DEPARTMENT_HERO",
+    name: "Department Hero",
+    description: "Have the most points in your department this month.",
+    icon: "Crown",
+    rarity: "EPIC",
+    criteria: { type: "DEPARTMENT_TOP_RANK" },
+  },
+  {
+    code: "QUALITY_EXPERT",
+    name: "Quality Expert",
+    description: "Average an evaluation score of 8.0+ across 3 or more approved ideas.",
+    icon: "Star",
+    rarity: "LEGENDARY",
+    criteria: { type: "AVG_EVALUATION_SCORE", minScore: 8.0, minCount: 3 },
+  },
+];
+
+/** The 8 MVP platform settings from docs/engineering/01_DATABASE_SCHEMA.md. Point values match
+ * the "MVP point values" table there; upload/pagination defaults match existing hardcoded
+ * behavior elsewhere in the codebase (kept here as the single documented source of truth). */
+const PLATFORM_SETTINGS: Array<{ key: string; value: number; description: string }> = [
+  { key: "points.kaizen_submitted", value: 10, description: "Points awarded when a Kaizen is submitted." },
+  { key: "points.idea_approved", value: 50, description: "Points awarded when a Kaizen is approved." },
+  {
+    key: "points.implementation_completed",
+    value: 100,
+    description: "Points awarded when a Kaizen's implementation is completed.",
+  },
+  {
+    key: "points.business_impact_verified",
+    value: 150,
+    description: "Points awarded when a Kaizen's business impact is recorded and its reward issued.",
+  },
+  {
+    key: "points.achievement_unlocked",
+    value: 25,
+    description: "Default points awarded when an achievement is unlocked.",
+  },
+  {
+    key: "upload.max_file_size_bytes",
+    value: 25 * 1024 * 1024,
+    description: "Maximum file size accepted for attachment uploads.",
+  },
+  {
+    key: "upload.max_files_per_kaizen",
+    value: 10,
+    description: "Maximum number of attachments allowed per Kaizen.",
+  },
+  { key: "pagination.default_page_size", value: 25, description: "Default page size for list endpoints." },
+];
+
 function slugify(value: string): string {
   return value
     .toLowerCase()
@@ -144,6 +271,37 @@ async function main() {
     });
   }
   console.log(`Seeded ${SCORING_PARAMETERS.length} scoring parameters.`);
+
+  for (const achievement of ACHIEVEMENTS) {
+    await prisma.achievement.upsert({
+      where: { code: achievement.code },
+      update: {
+        name: achievement.name,
+        description: achievement.description,
+        icon: achievement.icon,
+        rarity: achievement.rarity,
+        criteria: achievement.criteria,
+      },
+      create: {
+        code: achievement.code,
+        name: achievement.name,
+        description: achievement.description,
+        icon: achievement.icon,
+        rarity: achievement.rarity,
+        criteria: achievement.criteria,
+      },
+    });
+  }
+  console.log(`Seeded ${ACHIEVEMENTS.length} achievements.`);
+
+  for (const setting of PLATFORM_SETTINGS) {
+    await prisma.platformSetting.upsert({
+      where: { key: setting.key },
+      update: { value: setting.value, description: setting.description },
+      create: { key: setting.key, value: setting.value, description: setting.description },
+    });
+  }
+  console.log(`Seeded ${PLATFORM_SETTINGS.length} platform settings.`);
 }
 
 main()

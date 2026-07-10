@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 
+import { eventBus } from "../../events/event-bus.js";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
 import { formatKaizenNumber } from "../../utils/kaizen-number.js";
@@ -150,7 +151,7 @@ class KaizenService {
   async getTimeline(kaizenId: string, requester: Requester): Promise<TimelineEventItem[]> {
     const kaizen = await prisma.kaizen.findUnique({
       where: { id: kaizenId },
-      select: { submitterId: true, departmentId: true },
+      select: { submitterId: true, departmentId: true, assignedOwnerId: true },
     });
     assertFound(kaizen);
     this.assertCanView(kaizen, requester);
@@ -252,13 +253,14 @@ class KaizenService {
   }
 
   /** POST /kaizens/:id/submit — validates the wizard's required fields per the API spec, then
-   * transitions DRAFT/NEEDS_CHANGES -> SUBMITTED directly. NOT routed through a generic
-   * WorkflowService — that's the Workflow Engine milestone's job (state machine covering all 12
-   * statuses). This is a narrow, single-purpose transition scoped to just this one edge, with its
-   * own timeline event, matching what already exists for it in this milestone. Notification
-   * delivery and points-on-submit ("+10", per the API spec's documented side effects) are
-   * intentionally NOT implemented here — those belong to the Notifications and Gamification
-   * milestones respectively, neither of which exists yet.
+   * transitions DRAFT/NEEDS_CHANGES -> SUBMITTED directly. NOT routed through WorkflowService's
+   * transition table — that engine only covers the reviewer-driven edges (see workflow.service.ts's
+   * own doc comment); this is a narrow, single-purpose transition scoped to just this one edge,
+   * with its own timeline event, matching what already existed for it before that engine existed.
+   * The `kaizen.submitted` domain event is emitted directly here (rather than via WorkflowService)
+   * for the same reason — Notifications/Gamification (Milestone 9) subscribe to it for the
+   * "notify dept manager" + "+10 points" side effects documented since Milestone 4 and deferred
+   * until now; see `src/events/handlers/index.ts`.
    */
   async submit(kaizenId: string, requester: Requester): Promise<SubmitKaizenResult> {
     const kaizen = await prisma.kaizen.findUnique({
@@ -293,6 +295,8 @@ class KaizenService {
         description: "Kaizen submitted for review.",
       },
     });
+
+    void eventBus.emit("kaizen.submitted", { kaizenId, actorId: requester.id });
 
     return {
       id: submitted.id,
@@ -343,7 +347,7 @@ class KaizenService {
   }
 
   private assertCanView(
-    kaizen: { submitterId: string; departmentId: string },
+    kaizen: { submitterId: string; departmentId: string; assignedOwnerId?: string | null },
     requester: Requester,
   ): void {
     if (kaizen.submitterId === requester.id) return;
@@ -352,6 +356,10 @@ class KaizenService {
     if (requester.role === "DEPARTMENT_MANAGER" && requester.departmentId === kaizen.departmentId) {
       return;
     }
+    // Milestone 8: the implementation owner can be assigned from any department (see
+    // AssignImplementationSchema), so they need to view the Kaizen even outside every branch
+    // above. Purely additive — every previously-valid viewer above is unaffected.
+    if (kaizen.assignedOwnerId && kaizen.assignedOwnerId === requester.id) return;
     throw new ApiError("FORBIDDEN", "You cannot view this Kaizen.", 403);
   }
 

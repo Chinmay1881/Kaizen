@@ -7,37 +7,69 @@ import { auditService } from "../audit/audit.service.js";
 import type { UserRole } from "../../constants/roles.js";
 
 /**
- * States a review-workspace transition can move a Kaizen INTO. DRAFT/NEEDS_CHANGES -> SUBMITTED
- * (the submitter's own action) is intentionally NOT part of this table — that transition already
- * lives in `KaizenService.submit` (Milestone 4), predates this service, and is out of scope to
- * migrate here (see docs/PROJECT_STATUS.md Technical Debt).
+ * States a transition can move a Kaizen INTO. DRAFT/NEEDS_CHANGES -> SUBMITTED (the submitter's
+ * own action) is intentionally NOT part of this table — that transition already lives in
+ * `KaizenService.submit` (Milestone 4), predates this service, and is out of scope to migrate
+ * here (see docs/PROJECT_STATUS.md Technical Debt). Extended in Milestone 8 (Implementation &
+ * Business Impact) with 3 lifecycle edges, and again in Milestone 9 (Notifications &
+ * Gamification) with `REWARD_ISSUED`, per PROJECT_STATUS.md's own Technical Debt note
+ * anticipating exactly this: "later milestones... will need to extend this table rather than
+ * build a second, parallel transition mechanism."
  */
-type ReviewableStatus = "UNDER_REVIEW" | "APPROVED" | "REJECTED" | "NEEDS_CHANGES";
+type TransitionableStatus =
+  | "UNDER_REVIEW"
+  | "APPROVED"
+  | "REJECTED"
+  | "NEEDS_CHANGES"
+  | "IMPLEMENTATION_IN_PROGRESS"
+  | "IMPLEMENTATION_COMPLETED"
+  | "BUSINESS_IMPACT_RECORDED"
+  | "REWARD_ISSUED";
 
-const REVIEW_TRANSITIONS: Record<"SUBMITTED" | "UNDER_REVIEW", ReviewableStatus[]> = {
+const STATUS_TRANSITIONS: Record<
+  | "SUBMITTED"
+  | "UNDER_REVIEW"
+  | "APPROVED"
+  | "IMPLEMENTATION_IN_PROGRESS"
+  | "IMPLEMENTATION_COMPLETED"
+  | "BUSINESS_IMPACT_RECORDED",
+  TransitionableStatus[]
+> = {
   SUBMITTED: ["UNDER_REVIEW"],
   UNDER_REVIEW: ["APPROVED", "REJECTED", "NEEDS_CHANGES"],
+  APPROVED: ["IMPLEMENTATION_IN_PROGRESS"],
+  IMPLEMENTATION_IN_PROGRESS: ["IMPLEMENTATION_COMPLETED"],
+  IMPLEMENTATION_COMPLETED: ["BUSINESS_IMPACT_RECORDED"],
+  BUSINESS_IMPACT_RECORDED: ["REWARD_ISSUED"],
 };
 
-const TRANSITION_EVENT_TYPE: Record<ReviewableStatus, TimelineEventType> = {
+const TRANSITION_EVENT_TYPE: Record<TransitionableStatus, TimelineEventType> = {
   UNDER_REVIEW: "REVIEW_STARTED",
   APPROVED: "APPROVED",
   REJECTED: "REJECTED",
   NEEDS_CHANGES: "NEEDS_CHANGES",
+  IMPLEMENTATION_IN_PROGRESS: "IMPLEMENTATION_ASSIGNED",
+  IMPLEMENTATION_COMPLETED: "IMPLEMENTATION_COMPLETED",
+  BUSINESS_IMPACT_RECORDED: "BUSINESS_IMPACT_RECORDED",
+  REWARD_ISSUED: "REWARD_ISSUED",
 };
 
-/** Matches docs/engineering/02_API_SPECIFICATION.md's "Domain Events" table — only these three
- * review-workspace transitions have documented subscribers (Notifications/Gamification, neither
- * built yet, so `eventBus.emit` is currently a no-op — see event-bus.ts). */
-const DOMAIN_EVENT: Partial<Record<ReviewableStatus, string>> = {
+/** Matches docs/engineering/02_API_SPECIFICATION.md's "Domain Events" table. Notification and
+ * Gamification subscribers for these are registered in `src/events/handlers/index.ts` as of
+ * Milestone 9 — previously all no-ops. Assign (→ IMPLEMENTATION_IN_PROGRESS) has no documented
+ * domain event, so none is emitted for it. */
+const DOMAIN_EVENT: Partial<Record<TransitionableStatus, string>> = {
   APPROVED: "kaizen.approved",
   REJECTED: "kaizen.rejected",
   NEEDS_CHANGES: "kaizen.needs_changes",
+  IMPLEMENTATION_COMPLETED: "implementation.completed",
+  BUSINESS_IMPACT_RECORDED: "business_impact.recorded",
+  REWARD_ISSUED: "reward.issued",
 };
 
 interface TransitionParams {
   kaizenId: string;
-  toStatus: ReviewableStatus;
+  toStatus: TransitionableStatus;
   actor: { id: string; role: UserRole };
   description: string;
   extraData?: Prisma.KaizenUncheckedUpdateInput;
@@ -65,7 +97,7 @@ class WorkflowService {
     }
 
     const allowedTargets =
-      REVIEW_TRANSITIONS[kaizen.status as keyof typeof REVIEW_TRANSITIONS] ?? [];
+      STATUS_TRANSITIONS[kaizen.status as keyof typeof STATUS_TRANSITIONS] ?? [];
 
     if (!allowedTargets.includes(toStatus)) {
       throw new ApiError(

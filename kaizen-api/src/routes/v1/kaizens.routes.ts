@@ -1,5 +1,6 @@
 import { Router, type Request } from "express";
 
+import { requireRole } from "../../middleware/rbac.js";
 import { validate } from "../../middleware/validate.js";
 import {
   createKaizenSchema,
@@ -8,8 +9,19 @@ import {
   type ListKaizensQuerySchema,
 } from "../../modules/kaizens/kaizen.schema.js";
 import { kaizenService } from "../../modules/kaizens/kaizen.service.js";
+import { recordBusinessImpactSchema } from "../../modules/business-impact/business-impact.schema.js";
+import { businessImpactService } from "../../modules/business-impact/business-impact.service.js";
+import {
+  assignImplementationSchema,
+  completeImplementationSchema,
+  registerImplementationAttachmentSchema,
+  updateImplementationSchema,
+  verifyImplementationSchema,
+} from "../../modules/implementations/implementation.schema.js";
+import { implementationService } from "../../modules/implementations/implementation.service.js";
 import { createCommentSchema, reviewActionSchema } from "../../modules/reviews/review.schema.js";
 import { reviewService } from "../../modules/reviews/review.service.js";
+import { rewardService } from "../../modules/rewards/reward.service.js";
 import { upsertEvaluationSchema } from "../../modules/scoring/scoring.schema.js";
 import { scoringService } from "../../modules/scoring/scoring.service.js";
 import { ApiError } from "../../utils/api-error.js";
@@ -232,3 +244,151 @@ kaizensRouter.get("/:id/score", async (req, res, next) => {
     next(error);
   }
 });
+
+kaizensRouter.get("/:id/implementation", async (req, res, next) => {
+  try {
+    const requester = requireUser(req);
+    const implementation = await implementationService.getByKaizenId(
+      requireParam(req, "id"),
+      requester,
+    );
+    sendSuccess(res, implementation);
+  } catch (error) {
+    next(error);
+  }
+});
+
+kaizensRouter.post(
+  "/:id/implementation/assign",
+  validate(assignImplementationSchema),
+  async (req, res, next) => {
+    try {
+      const requester = requireUser(req);
+      const implementation = await implementationService.assign(
+        requireParam(req, "id"),
+        requester,
+        req.body,
+      );
+      sendSuccess(res, implementation, 201);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+kaizensRouter.patch(
+  "/:id/implementation",
+  validate(updateImplementationSchema),
+  async (req, res, next) => {
+    try {
+      const requester = requireUser(req);
+      const implementation = await implementationService.updateProgress(
+        requireParam(req, "id"),
+        requester,
+        req.body,
+      );
+      sendSuccess(res, implementation);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+kaizensRouter.post(
+  "/:id/implementation/complete",
+  validate(completeImplementationSchema),
+  async (req, res, next) => {
+    try {
+      const requester = requireUser(req);
+      const implementation = await implementationService.complete(
+        requireParam(req, "id"),
+        requester,
+        req.body,
+      );
+      sendSuccess(res, implementation);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+kaizensRouter.post(
+  "/:id/implementation/verify",
+  validate(verifyImplementationSchema),
+  async (req, res, next) => {
+    try {
+      const requester = requireUser(req);
+      const implementation = await implementationService.verify(
+        requireParam(req, "id"),
+        requester,
+        req.body,
+      );
+      sendSuccess(res, implementation);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+kaizensRouter.post(
+  "/:id/implementation/attachments",
+  validate(registerImplementationAttachmentSchema),
+  async (req, res, next) => {
+    try {
+      const requester = requireUser(req);
+      const attachment = await implementationService.registerAttachment(
+        requireParam(req, "id"),
+        requester,
+        req.body,
+      );
+      sendSuccess(res, attachment, 201);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+kaizensRouter.get("/:id/business-impact", async (req, res, next) => {
+  try {
+    const requester = requireUser(req);
+    const businessImpact = await businessImpactService.get(requireParam(req, "id"), requester);
+    sendSuccess(res, businessImpact);
+  } catch (error) {
+    next(error);
+  }
+});
+
+kaizensRouter.post(
+  "/:id/business-impact",
+  validate(recordBusinessImpactSchema),
+  async (req, res, next) => {
+    try {
+      const requester = requireUser(req);
+      const businessImpact = await businessImpactService.record(
+        requireParam(req, "id"),
+        requester,
+        req.body,
+      );
+      sendSuccess(res, businessImpact, 201);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/** "Auth: System (internal) or Super Admin" — the internal path is the `business_impact.recorded`
+ * event handler calling `rewardService.autoIssue` directly (no HTTP, no auth). This route is only
+ * the Super-Admin-callable manual-retry path. */
+kaizensRouter.post(
+  "/:id/rewards/issue",
+  requireRole("SUPER_ADMIN"),
+  async (req, res, next) => {
+    try {
+      const requester = requireUser(req);
+      const reward = await rewardService.issue(requireParam(req, "id"), requester);
+      sendSuccess(res, reward, 201);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
