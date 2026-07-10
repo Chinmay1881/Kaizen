@@ -15,6 +15,8 @@
 
 import { PrismaClient } from "@prisma/client";
 
+import { slugify } from "../src/utils/slugify.js";
+
 const prisma = new PrismaClient();
 
 /** The 5 MVP evaluation parameters from SCORE-001. Guidelines follow the same 4-band pattern
@@ -213,13 +215,6 @@ const PLATFORM_SETTINGS: Array<{ key: string; value: number; description: string
   },
   { key: "pagination.default_page_size", value: 25, description: "Default page size for list endpoints." },
 ];
-
-function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
 
 async function main() {
   for (const [index, category] of CATEGORIES.entries()) {

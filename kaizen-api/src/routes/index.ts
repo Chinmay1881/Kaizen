@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { attachUser, clerkAuth, requireAuth } from "../middleware/auth.js";
+import { adminRouter } from "./v1/admin.routes.js";
 import { categoriesRouter } from "./v1/categories.routes.js";
 import { departmentsRouter } from "./v1/departments.routes.js";
 import { gamificationRouter } from "./v1/gamification.routes.js";
@@ -25,5 +26,6 @@ v1Router.use("/scoring", requireAuth, attachUser, scoringRouter);
 v1Router.use("/implementations", requireAuth, attachUser, implementationsRouter);
 v1Router.use("/notifications", requireAuth, attachUser, notificationsRouter);
 v1Router.use("/users", requireAuth, attachUser, usersRouter);
+v1Router.use("/admin", requireAuth, attachUser, adminRouter);
 // Mounted at root: resolves to the API spec's unprefixed `/leaderboard` and `/achievements` paths.
 v1Router.use("/", requireAuth, attachUser, gamificationRouter);
