@@ -3,7 +3,10 @@ import { z } from "zod";
 import { KAIZEN_PRIORITIES } from "../../constants/kaizen-priority.js";
 
 /** GET /reviews/queue query params — mirrors kaizen.schema.ts's listKaizensQuerySchema shape
- * (same `sort` convention already established there) plus `departmentId` for HR/CMD/Super Admin. */
+ * (same `sort` convention already established there) plus `departmentId` for HR/CMD/Super Admin.
+ * Milestone 11 Chunk 2 (Advanced Filtering) added `dateFrom`/`dateTo` (submitted-at range),
+ * `scoreMin`/`scoreMax` (submitted-evaluation overall rating), `recommendation` (Approval
+ * Recommendation), `submitterId` (Employee), and `assignedReviewerId` (Assigned To). */
 export const reviewQueueQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
   pageSize: z.coerce.number().int().min(1).max(100).optional(),
@@ -13,6 +16,13 @@ export const reviewQueueQuerySchema = z.object({
   priority: z.enum(KAIZEN_PRIORITIES).optional(),
   search: z.string().trim().max(200).optional(),
   sort: z.enum(["newest", "oldest", "updated"]).optional(),
+  dateFrom: z.coerce.date().optional(),
+  dateTo: z.coerce.date().optional(),
+  scoreMin: z.coerce.number().min(0).max(10).optional(),
+  scoreMax: z.coerce.number().min(0).max(10).optional(),
+  recommendation: z.enum(["APPROVE", "REJECT", "NEEDS_CHANGES"]).optional(),
+  submitterId: z.string().uuid().optional(),
+  assignedReviewerId: z.string().uuid().optional(),
 });
 
 /** POST /kaizens/:id/review/{approve,reject,needs-changes} body — `notes` matches the API

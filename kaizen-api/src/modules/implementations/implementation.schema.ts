@@ -1,13 +1,18 @@
 import { z } from "zod";
 
 /** GET /implementations query params — mirrors kaizen.schema.ts/review.schema.ts's pagination
- * convention. */
+ * convention. Milestone 11 Chunk 2 added `dateFrom`/`dateTo` (started-at range) and
+ * `kaizenStatus` (the underlying Kaizen's lifecycle status — "Implementation Status" as
+ * IN_PROGRESS/COMPLETED, distinct from `status`, which is `verificationStatus`). */
 export const listImplementationsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
   pageSize: z.coerce.number().int().min(1).max(100).optional(),
   status: z.string().trim().max(300).optional(),
   departmentId: z.string().uuid().optional(),
   ownerId: z.string().uuid().optional(),
+  dateFrom: z.coerce.date().optional(),
+  dateTo: z.coerce.date().optional(),
+  kaizenStatus: z.enum(["IMPLEMENTATION_IN_PROGRESS", "IMPLEMENTATION_COMPLETED"]).optional(),
 });
 
 /** POST /kaizens/:id/implementation/assign body — matches the API spec's documented shape. */

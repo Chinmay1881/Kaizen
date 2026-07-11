@@ -88,6 +88,34 @@ class ReviewService {
             ],
           }
         : {}),
+      ...(query.dateFrom || query.dateTo
+        ? {
+            submittedAt: {
+              ...(query.dateFrom ? { gte: query.dateFrom } : {}),
+              ...(query.dateTo ? { lte: query.dateTo } : {}),
+            },
+          }
+        : {}),
+      ...(query.submitterId ? { submitterId: query.submitterId } : {}),
+      ...(query.assignedReviewerId ? { assignedReviewerId: query.assignedReviewerId } : {}),
+      ...(query.recommendation || query.scoreMin !== undefined || query.scoreMax !== undefined
+        ? {
+            evaluations: {
+              some: {
+                isSubmitted: true,
+                ...(query.recommendation ? { recommendation: query.recommendation } : {}),
+                ...(query.scoreMin !== undefined || query.scoreMax !== undefined
+                  ? {
+                      overallRating: {
+                        ...(query.scoreMin !== undefined ? { gte: query.scoreMin } : {}),
+                        ...(query.scoreMax !== undefined ? { lte: query.scoreMax } : {}),
+                      },
+                    }
+                  : {}),
+              },
+            },
+          }
+        : {}),
     };
 
     const orderBy: Prisma.KaizenOrderByWithRelationInput =

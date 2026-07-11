@@ -108,22 +108,35 @@ class ImplementationService {
 
     const isCompanyWide = COMPANY_WIDE_ROLES.includes(requester.role);
 
-    let scope: Prisma.ImplementationWhereInput;
-    if (isCompanyWide) {
-      scope = query.departmentId ? { assignedDepartmentId: query.departmentId } : {};
-    } else if (requester.role === "DEPARTMENT_MANAGER") {
-      if (!requester.departmentId) {
-        return { items: [], meta: buildPaginationMeta({ page, pageSize }, 0) };
+    // Multiple independent conditions on the related Kaizen (department/submitter scope, plus the
+    // optional `kaizenStatus` filter) are combined via `AND` rather than spread together, since
+    // Prisma's `kaizen` relation filter type doesn't allow merging plain-object shapes safely.
+    const kaizenFilters: Prisma.KaizenWhereInput[] = [];
+    if (!isCompanyWide) {
+      if (requester.role === "DEPARTMENT_MANAGER") {
+        if (!requester.departmentId) {
+          return { items: [], meta: buildPaginationMeta({ page, pageSize }, 0) };
+        }
+        kaizenFilters.push({ departmentId: requester.departmentId });
+      } else {
+        kaizenFilters.push({ submitterId: requester.id });
       }
-      scope = { kaizen: { departmentId: requester.departmentId } };
-    } else {
-      scope = { kaizen: { submitterId: requester.id } };
     }
+    if (query.kaizenStatus) kaizenFilters.push({ status: query.kaizenStatus });
 
     const where: Prisma.ImplementationWhereInput = {
-      ...scope,
+      ...(isCompanyWide && query.departmentId ? { assignedDepartmentId: query.departmentId } : {}),
       ...(query.status ? { verificationStatus: query.status as never } : {}),
       ...(query.ownerId ? { ownerId: query.ownerId } : {}),
+      ...(kaizenFilters.length > 0 ? { kaizen: { AND: kaizenFilters } } : {}),
+      ...(query.dateFrom || query.dateTo
+        ? {
+            startedAt: {
+              ...(query.dateFrom ? { gte: query.dateFrom } : {}),
+              ...(query.dateTo ? { lte: query.dateTo } : {}),
+            },
+          }
+        : {}),
     };
 
     const [rows, total] = await Promise.all([

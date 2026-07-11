@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { HardHat } from "lucide-react";
 
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
+import { useUrlFilters } from "@/hooks/use-url-filters";
 import { useCurrentUser } from "@/features/auth/hooks/use-current-user";
 import { MyIdeasPagination } from "@/features/kaizen/components/my-ideas/my-ideas-pagination";
 import { ImplementationQueueCard } from "@/features/implementation/components/queue/implementation-queue-card";
@@ -12,10 +12,21 @@ import { ImplementationQueueFilters } from "@/features/implementation/components
 import { ImplementationQueueSkeleton } from "@/features/implementation/components/queue/implementation-queue-skeleton";
 import { useImplementationList } from "@/features/implementation/hooks/use-implementation-list";
 import type { VerificationStatus } from "@/features/implementation/types/implementation";
+import { SavedViewsBar } from "@/features/saved-views/components/saved-views-bar";
+import type { SavedViewFilters } from "@/features/saved-views/types/saved-view";
 import { ApiError } from "@/lib/api-client";
 
 const PAGE_SIZE = 10;
 const COMPANY_WIDE_ROLES = ["HR", "CMD", "SUPER_ADMIN"];
+
+const DEFAULT_FILTERS = {
+  status: "",
+  departmentId: "",
+  kaizenStatus: "",
+  dateFrom: "",
+  dateTo: "",
+  page: "1",
+};
 
 export function ImplementationQueueView() {
   const { data: currentUser } = useCurrentUser();
@@ -23,25 +34,29 @@ export function ImplementationQueueView() {
     currentUser && COMPANY_WIDE_ROLES.includes(currentUser.role),
   );
 
-  const [status, setStatus] = useState("");
-  const [departmentId, setDepartmentId] = useState("");
-  const [page, setPage] = useState(1);
+  const { filters, setFilters, replaceAll } = useUrlFilters(DEFAULT_FILTERS);
+  const page = Number(filters.page) || 1;
 
   const query = useImplementationList({
     page,
     pageSize: PAGE_SIZE,
-    status: (status as VerificationStatus) || undefined,
-    departmentId: departmentId || undefined,
+    status: (filters.status as VerificationStatus) || undefined,
+    departmentId: filters.departmentId || undefined,
+    kaizenStatus: (filters.kaizenStatus as never) || undefined,
+    dateFrom: filters.dateFrom || undefined,
+    dateTo: filters.dateTo || undefined,
   });
 
-  function updateFilter<T>(setter: (value: T) => void) {
-    return (value: T) => {
-      setter(value);
-      setPage(1);
-    };
+  function updateFilter<K extends keyof typeof DEFAULT_FILTERS>(key: K) {
+    return (value: string) => setFilters({ [key]: value } as Partial<typeof DEFAULT_FILTERS>);
   }
 
-  const hasActiveFilters = Boolean(status || departmentId);
+  const activeFilters: SavedViewFilters = Object.fromEntries(
+    Object.entries(filters).filter(
+      ([key, value]) => key !== "page" && value !== "" && value !== DEFAULT_FILTERS[key as keyof typeof DEFAULT_FILTERS],
+    ),
+  );
+  const hasActiveFilters = Object.keys(activeFilters).length > 0;
 
   if (query.isError) {
     const message =
@@ -59,12 +74,24 @@ export function ImplementationQueueView() {
 
   return (
     <div className="flex flex-col gap-6">
+      <SavedViewsBar
+        entityType="IMPLEMENTATION_QUEUE"
+        currentFilters={activeFilters}
+        onApply={(saved) => replaceAll(saved as Partial<typeof DEFAULT_FILTERS>)}
+      />
+
       <ImplementationQueueFilters
-        status={status}
-        onStatusChange={updateFilter(setStatus)}
+        status={filters.status}
+        onStatusChange={updateFilter("status")}
         showDepartmentFilter={showDepartmentFilter}
-        departmentId={departmentId}
-        onDepartmentChange={updateFilter(setDepartmentId)}
+        departmentId={filters.departmentId}
+        onDepartmentChange={updateFilter("departmentId")}
+        kaizenStatus={filters.kaizenStatus}
+        onKaizenStatusChange={updateFilter("kaizenStatus")}
+        dateFrom={filters.dateFrom}
+        onDateFromChange={updateFilter("dateFrom")}
+        dateTo={filters.dateTo}
+        onDateToChange={updateFilter("dateTo")}
       />
 
       {query.isLoading || !query.data ? (
@@ -90,7 +117,10 @@ export function ImplementationQueueView() {
               <ImplementationQueueCard key={implementation.id} implementation={implementation} />
             ))}
           </div>
-          <MyIdeasPagination meta={query.data.meta} onPageChange={setPage} />
+          <MyIdeasPagination
+            meta={query.data.meta}
+            onPageChange={(nextPage) => setFilters({ page: String(nextPage) } as Partial<typeof DEFAULT_FILTERS>)}
+          />
         </>
       )}
     </div>

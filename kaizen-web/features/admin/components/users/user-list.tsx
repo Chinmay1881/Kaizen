@@ -30,41 +30,52 @@ import { useAdminUsers, useDeactivateAdminUser } from "@/features/admin/hooks/us
 import type { AdminUser } from "@/features/admin/types/admin";
 import { useCurrentUser } from "@/features/auth/hooks/use-current-user";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useUrlFilters } from "@/hooks/use-url-filters";
+import { SavedViewsBar } from "@/features/saved-views/components/saved-views-bar";
+import type { SavedViewFilters } from "@/features/saved-views/types/saved-view";
 import { ApiError } from "@/lib/api-client";
 import { MyIdeasPagination } from "@/features/kaizen/components/my-ideas/my-ideas-pagination";
 import { formatDate } from "@/utils/format";
 
 const PAGE_SIZE = 20;
 
+const DEFAULT_FILTERS = {
+  search: "",
+  role: "",
+  departmentId: "",
+  isActive: "",
+  page: "1",
+};
+
 export function UserList() {
   const { data: currentUser } = useCurrentUser();
   const { data: departments } = useAdminDepartments();
 
-  const [search, setSearch] = useState("");
-  const [role, setRole] = useState("");
-  const [departmentId, setDepartmentId] = useState("");
-  const [isActive, setIsActive] = useState("");
-  const [page, setPage] = useState(1);
+  const { filters, setFilters, replaceAll } = useUrlFilters(DEFAULT_FILTERS);
+  const page = Number(filters.page) || 1;
   const [dialogUser, setDialogUser] = useState<AdminUser | "new" | null>(null);
 
-  const debouncedSearch = useDebounce(search, 400);
+  const debouncedSearch = useDebounce(filters.search, 400);
   const deactivate = useDeactivateAdminUser();
 
   const query = useAdminUsers({
     page,
     pageSize: PAGE_SIZE,
     search: debouncedSearch || undefined,
-    role: (role as AdminUser["role"]) || undefined,
-    departmentId: departmentId || undefined,
-    isActive: isActive === "" ? undefined : isActive === "true",
+    role: (filters.role as AdminUser["role"]) || undefined,
+    departmentId: filters.departmentId || undefined,
+    isActive: filters.isActive === "" ? undefined : filters.isActive === "true",
   });
 
-  function updateFilter<T>(setter: (value: T) => void) {
-    return (value: T) => {
-      setter(value);
-      setPage(1);
-    };
+  function updateFilter<K extends keyof typeof DEFAULT_FILTERS>(key: K) {
+    return (value: string) => setFilters({ [key]: value } as Partial<typeof DEFAULT_FILTERS>);
   }
+
+  const activeFilters: SavedViewFilters = Object.fromEntries(
+    Object.entries(filters).filter(
+      ([key, value]) => key !== "page" && value !== "" && value !== DEFAULT_FILTERS[key as keyof typeof DEFAULT_FILTERS],
+    ),
+  );
 
   if (query.isError) {
     const message =
@@ -145,14 +156,20 @@ export function UserList() {
 
   return (
     <div className="flex flex-col gap-4">
+      <SavedViewsBar
+        entityType="ADMIN_USERS"
+        currentFilters={activeFilters}
+        onApply={(saved) => replaceAll(saved as Partial<typeof DEFAULT_FILTERS>)}
+      />
+
       <div className="flex flex-wrap items-center gap-3">
         <Input
           placeholder="Search name or email…"
-          value={search}
-          onChange={(event) => updateFilter(setSearch)(event.target.value)}
+          value={filters.search}
+          onChange={(event) => updateFilter("search")(event.target.value)}
           className="max-w-xs"
         />
-        <Select className="w-auto" value={role} onChange={(event) => updateFilter(setRole)(event.target.value)}>
+        <Select className="w-auto" value={filters.role} onChange={(event) => updateFilter("role")(event.target.value)}>
           <option value="">All Roles</option>
           {USER_ROLE_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -162,8 +179,8 @@ export function UserList() {
         </Select>
         <Select
           className="w-auto"
-          value={departmentId}
-          onChange={(event) => updateFilter(setDepartmentId)(event.target.value)}
+          value={filters.departmentId}
+          onChange={(event) => updateFilter("departmentId")(event.target.value)}
         >
           <option value="">All Departments</option>
           {departments?.map((department) => (
@@ -174,8 +191,8 @@ export function UserList() {
         </Select>
         <Select
           className="w-auto"
-          value={isActive}
-          onChange={(event) => updateFilter(setIsActive)(event.target.value)}
+          value={filters.isActive}
+          onChange={(event) => updateFilter("isActive")(event.target.value)}
         >
           <option value="">All Statuses</option>
           <option value="true">Active</option>
@@ -194,7 +211,10 @@ export function UserList() {
       ) : (
         <>
           <AdminTable columns={columns} rows={query.data.items} getRowKey={(user) => user.id} />
-          <MyIdeasPagination meta={query.data.meta} onPageChange={setPage} />
+          <MyIdeasPagination
+            meta={query.data.meta}
+            onPageChange={(nextPage) => setFilters({ page: String(nextPage) } as Partial<typeof DEFAULT_FILTERS>)}
+          />
         </>
       )}
 

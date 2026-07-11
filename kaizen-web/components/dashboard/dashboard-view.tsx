@@ -9,6 +9,7 @@ import { StatsCards } from "@/components/dashboard/stats-cards";
 import { WelcomeHeader } from "@/components/dashboard/welcome-header";
 import { ErrorState } from "@/components/feedback/error-state";
 import { FadeIn } from "@/components/feedback/fade-in";
+import { PersonalAnalyticsSection } from "@/features/analytics/components/personal/personal-analytics-section";
 import { useCurrentUser } from "@/features/auth/hooks/use-current-user";
 
 export function DashboardView() {
@@ -53,6 +54,10 @@ export function DashboardView() {
 
       <FadeIn delay={0.25}>
         <QuickActionsCard />
+      </FadeIn>
+
+      <FadeIn delay={0.3}>
+        <PersonalAnalyticsSection />
       </FadeIn>
     </div>
   );

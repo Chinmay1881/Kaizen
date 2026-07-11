@@ -100,6 +100,8 @@ export interface ListKaizensParams {
   priority?: KaizenPriority;
   search?: string;
   sort?: KaizenSort;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 export interface PaginationMeta {

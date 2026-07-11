@@ -23,6 +23,10 @@ interface MyIdeasFiltersProps {
   onPriorityChange: (value: string) => void;
   sort: KaizenSort;
   onSortChange: (value: KaizenSort) => void;
+  dateFrom: string;
+  onDateFromChange: (value: string) => void;
+  dateTo: string;
+  onDateToChange: (value: string) => void;
 }
 
 export function MyIdeasFilters({
@@ -36,6 +40,10 @@ export function MyIdeasFilters({
   onPriorityChange,
   sort,
   onSortChange,
+  dateFrom,
+  onDateFromChange,
+  dateTo,
+  onDateToChange,
 }: MyIdeasFiltersProps) {
   const categoriesQuery = useCategories();
 
@@ -103,6 +111,11 @@ export function MyIdeasFilters({
             </option>
           ))}
         </Select>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 sm:w-1/2">
+        <Input type="date" value={dateFrom} onChange={(event) => onDateFromChange(event.target.value)} aria-label="Created from" />
+        <Input type="date" value={dateTo} onChange={(event) => onDateToChange(event.target.value)} aria-label="Created to" />
       </div>
     </div>
   );

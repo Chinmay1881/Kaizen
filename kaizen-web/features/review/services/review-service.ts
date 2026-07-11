@@ -10,6 +10,13 @@ import type {
 
 export interface ReviewQueueParams extends ListKaizensParams {
   departmentId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  scoreMin?: string;
+  scoreMax?: string;
+  recommendation?: string;
+  submitterId?: string;
+  assignedReviewerId?: string;
 }
 
 function buildQueueQuery(params: ReviewQueueParams): string {
@@ -22,6 +29,13 @@ function buildQueueQuery(params: ReviewQueueParams): string {
   if (params.priority) search.set("priority", params.priority);
   if (params.search) search.set("search", params.search);
   if (params.sort) search.set("sort", params.sort);
+  if (params.dateFrom) search.set("dateFrom", params.dateFrom);
+  if (params.dateTo) search.set("dateTo", params.dateTo);
+  if (params.scoreMin) search.set("scoreMin", params.scoreMin);
+  if (params.scoreMax) search.set("scoreMax", params.scoreMax);
+  if (params.recommendation) search.set("recommendation", params.recommendation);
+  if (params.submitterId) search.set("submitterId", params.submitterId);
+  if (params.assignedReviewerId) search.set("assignedReviewerId", params.assignedReviewerId);
   const query = search.toString();
   return query ? `?${query}` : "";
 }

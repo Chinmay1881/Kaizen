@@ -103,6 +103,9 @@ export interface ImplementationListParams {
   status?: VerificationStatus;
   departmentId?: string;
   ownerId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  kaizenStatus?: "IMPLEMENTATION_IN_PROGRESS" | "IMPLEMENTATION_COMPLETED";
 }
 
 export interface PaginationMeta {

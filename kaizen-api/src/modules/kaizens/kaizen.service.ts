@@ -127,6 +127,14 @@ class KaizenService {
             ],
           }
         : {}),
+      ...(query.dateFrom || query.dateTo
+        ? {
+            createdAt: {
+              ...(query.dateFrom ? { gte: query.dateFrom } : {}),
+              ...(query.dateTo ? { lte: query.dateTo } : {}),
+            },
+          }
+        : {}),
     };
 
     const orderBy: Prisma.KaizenOrderByWithRelationInput =

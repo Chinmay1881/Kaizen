@@ -54,7 +54,8 @@ export const updateKaizenSchema = z
   })
   .strict();
 
-/** GET /kaizens query params. `limit` is accepted as an alias for `pageSize` for convenience. */
+/** GET /kaizens query params. `limit` is accepted as an alias for `pageSize` for convenience.
+ * Milestone 11 Chunk 2 added `dateFrom`/`dateTo` (created-at range). */
 export const listKaizensQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
   pageSize: z.coerce.number().int().min(1).max(100).optional(),
@@ -64,6 +65,8 @@ export const listKaizensQuerySchema = z.object({
   priority: z.enum(KAIZEN_PRIORITIES).optional(),
   search: z.string().trim().max(200).optional(),
   sort: z.enum(["newest", "oldest", "updated"]).optional(),
+  dateFrom: z.coerce.date().optional(),
+  dateTo: z.coerce.date().optional(),
 });
 
 export type CreateKaizenSchema = z.infer<typeof createKaizenSchema>;

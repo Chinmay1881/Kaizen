@@ -20,6 +20,9 @@ function buildListQuery(params: ImplementationListParams): string {
   if (params.status) search.set("status", params.status);
   if (params.departmentId) search.set("departmentId", params.departmentId);
   if (params.ownerId) search.set("ownerId", params.ownerId);
+  if (params.dateFrom) search.set("dateFrom", params.dateFrom);
+  if (params.dateTo) search.set("dateTo", params.dateTo);
+  if (params.kaizenStatus) search.set("kaizenStatus", params.kaizenStatus);
   const query = search.toString();
   return query ? `?${query}` : "";
 }

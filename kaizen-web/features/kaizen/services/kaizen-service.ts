@@ -20,6 +20,8 @@ function buildListQuery(params: ListKaizensParams): string {
   if (params.priority) search.set("priority", params.priority);
   if (params.search) search.set("search", params.search);
   if (params.sort) search.set("sort", params.sort);
+  if (params.dateFrom) search.set("dateFrom", params.dateFrom);
+  if (params.dateTo) search.set("dateTo", params.dateTo);
   const query = search.toString();
   return query ? `?${query}` : "";
 }

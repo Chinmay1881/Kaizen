@@ -1,6 +1,7 @@
 import { AppHeader } from "@/components/layout/app-header";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { CommandPalette } from "@/features/search/components/command-palette";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -11,6 +12,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <main className="flex-1 p-6">{children}</main>
       </div>
       <MobileNav />
+      <CommandPalette />
     </div>
   );
 }

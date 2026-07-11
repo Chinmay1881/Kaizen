@@ -7,6 +7,7 @@ import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/features/auth/components/logout-button";
 import { NotificationBell } from "@/features/notifications/components/notification-bell";
+import { SearchTriggerButton } from "@/features/search/components/search-trigger-button";
 
 interface AppHeaderProps {
   title?: string;
@@ -17,11 +18,12 @@ export function AppHeader({ title = "Muliya Kaizan" }: AppHeaderProps) {
 
   return (
     <header className="bg-background/95 sticky top-0 z-30 flex h-16 items-center justify-between border-b px-6 backdrop-blur">
-      <div>
+      <div className="hidden sm:block">
         <p className="text-muted-foreground text-sm">Workspace</p>
         <h1 className="text-lg font-semibold">{title}</h1>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-1 items-center justify-end gap-2 sm:flex-none">
+        <SearchTriggerButton />
         <Button
           variant="ghost"
           size="icon"

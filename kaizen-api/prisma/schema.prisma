@@ -83,6 +83,7 @@ model User {
   reviewComments                    ReviewComment[]
   rewardsIssued                     Reward[]                   @relation("RewardIssuer")
   rewardsReceived                   Reward[]                   @relation("RewardRecipient")
+  savedViews                        SavedView[]
   timelineEvents                    TimelineEvent[]
   userAchievements                  UserAchievement[]
   gamification                      UserGamification?
@@ -677,4 +678,34 @@ enum LeaderboardPeriod {
 enum LeaderboardScope {
   COMPANY
   DEPARTMENT
+}
+
+/// Which list page a SavedView's `filters` JSON applies to — matches the shape each list
+/// endpoint's own query schema already accepts.
+enum SavedViewEntityType {
+  KAIZEN_LIST
+  REVIEW_QUEUE
+  IMPLEMENTATION_QUEUE
+  ADMIN_USERS
+}
+
+/// A user's saved filter/sort combination for a list page (Milestone 11 Chunk 2). `filters` is
+/// the exact query-string-shaped JSON object the corresponding list endpoint already accepts
+/// (e.g. `{"status":"UNDER_REVIEW","priority":"HIGH"}`) — no new filter vocabulary, just a name
+/// for a previously-typed-out combination. `isShared` only has meaning when set by a Super Admin
+/// (enforced at the service layer, not the schema) — everyone else's saved views are private.
+model SavedView {
+  id           String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String              @map("user_id") @db.Uuid
+  entityType   SavedViewEntityType @map("entity_type")
+  name         String              @db.VarChar(100)
+  filters      Json
+  isDefault    Boolean             @default(false) @map("is_default")
+  isShared     Boolean             @default(false) @map("is_shared")
+  createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user         User                @relation(fields: [userId], references: [id])
+
+  @@index([userId, entityType])
+  @@map("saved_views")
 }
