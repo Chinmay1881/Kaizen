@@ -2,6 +2,7 @@ import {
   BarChart3,
   ClipboardList,
   FileText,
+  FileBarChart,
   HardHat,
   LayoutDashboard,
   ShieldCheck,
@@ -43,6 +44,12 @@ const ANALYTICS_NAV_ITEM: FoundationNavItem = {
   icon: BarChart3,
 };
 
+const REPORTS_NAV_ITEM: FoundationNavItem = {
+  label: "Reports",
+  href: ROUTES.REPORTS,
+  icon: FileBarChart,
+};
+
 const ADMIN_NAV_ITEM: FoundationNavItem = {
   label: "Administration",
   href: ROUTES.ADMIN,
@@ -66,14 +73,14 @@ export function getFoundationNav(role?: UserRole): FoundationNavItem[] {
   if (!role) return BASE_FOUNDATION_NAV;
 
   const items = [...BASE_FOUNDATION_NAV];
-  if (canReview(role)) items.push(REVIEW_NAV_ITEM, IMPLEMENTATION_NAV_ITEM, ANALYTICS_NAV_ITEM);
+  if (canReview(role)) items.push(REVIEW_NAV_ITEM, IMPLEMENTATION_NAV_ITEM, ANALYTICS_NAV_ITEM, REPORTS_NAV_ITEM);
   if (canAccessAdmin(role)) items.push(ADMIN_NAV_ITEM);
   return items;
 }
 
 /** "My Ideas" should also read as active on its detail page (/kaizen/[id]), but not on the
  * separate Submit Kaizen wizard (/kaizen/new). "Review"/"Implementation"/"Administration"/
- * "Analytics" read as active on their sub-pages too. */
+ * "Analytics"/"Reports" read as active on their sub-pages too. */
 export function isFoundationNavItemActive(pathname: string, href: string): boolean {
   if (pathname === href) return true;
   if (href === ROUTES.MY_IDEAS) {
@@ -83,7 +90,8 @@ export function isFoundationNavItemActive(pathname: string, href: string): boole
     href === ROUTES.REVIEW ||
     href === ROUTES.IMPLEMENTATION ||
     href === ROUTES.ADMIN ||
-    href === ROUTES.ANALYTICS
+    href === ROUTES.ANALYTICS ||
+    href === ROUTES.REPORTS
   ) {
     return pathname.startsWith(`${href}/`);
   }

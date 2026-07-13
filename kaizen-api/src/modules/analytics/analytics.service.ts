@@ -165,7 +165,7 @@ class AnalyticsService {
   /** Average hours from `SUBMITTED` to the first `APPROVED`/`REJECTED` timeline event — derived
    * from `timeline_events` (immutable audit trail) rather than a dedicated column, since only
    * `approvedAt` exists on `Kaizen` and rejections have no equivalent column. */
-  private async getAvgReviewTimeHours(where: Prisma.KaizenWhereInput): Promise<number | null> {
+  async getAvgReviewTimeHours(where: Prisma.KaizenWhereInput): Promise<number | null> {
     const kaizens = await prisma.kaizen.findMany({
       where: { ...where, status: { in: [...APPROVED_SUPERSET_STATUSES, "REJECTED"] } },
       select: { id: true, submittedAt: true },
@@ -192,7 +192,7 @@ class AnalyticsService {
     return Math.round((hours.reduce((a, b) => a + b, 0) / hours.length) * 10) / 10;
   }
 
-  private async getAvgImplementationTimeDays(where: Prisma.KaizenWhereInput): Promise<number | null> {
+  async getAvgImplementationTimeDays(where: Prisma.KaizenWhereInput): Promise<number | null> {
     const implementations = await prisma.implementation.findMany({
       where: { kaizen: where, startedAt: { not: null }, completedAt: { not: null } },
       select: { startedAt: true, completedAt: true },
@@ -204,7 +204,7 @@ class AnalyticsService {
     return Math.round((days.reduce((a, b) => a + b, 0) / days.length) * 10) / 10;
   }
 
-  private async getAvgScore(where: Prisma.KaizenWhereInput): Promise<number | null> {
+  async getAvgScore(where: Prisma.KaizenWhereInput): Promise<number | null> {
     const result = await prisma.evaluation.aggregate({
       where: { isSubmitted: true, kaizen: where },
       _avg: { overallRating: true },
@@ -212,7 +212,7 @@ class AnalyticsService {
     return result._avg.overallRating != null ? Number(result._avg.overallRating) : null;
   }
 
-  private async getAvgBusinessImpact(where: Prisma.KaizenWhereInput): Promise<number | null> {
+  async getAvgBusinessImpact(where: Prisma.KaizenWhereInput): Promise<number | null> {
     const result = await prisma.businessImpact.aggregate({
       where: { kaizen: where },
       _avg: { moneySaved: true },
@@ -220,7 +220,7 @@ class AnalyticsService {
     return result._avg.moneySaved != null ? Number(result._avg.moneySaved) : null;
   }
 
-  private async getActualSavings(where: Prisma.KaizenWhereInput): Promise<number> {
+  async getActualSavings(where: Prisma.KaizenWhereInput): Promise<number> {
     const result = await prisma.businessImpact.aggregate({
       where: { kaizen: where },
       _sum: { moneySaved: true },
@@ -231,18 +231,18 @@ class AnalyticsService {
   /** `kaizen_benefits.description` for `benefitType = 'ESTIMATED_SAVINGS'` is free text typed
    * into the wizard (Milestone 4), not a structured number — this can only ever be a count of how
    * many Kaizens recorded one, never a summed amount. See PROJECT_STATUS.md Known Issues. */
-  private async getKaizensWithEstimatedSavingsCount(where: Prisma.KaizenWhereInput): Promise<number> {
+  async getKaizensWithEstimatedSavingsCount(where: Prisma.KaizenWhereInput): Promise<number> {
     return prisma.kaizen.count({
       where: { ...where, benefits: { some: { benefitType: "ESTIMATED_SAVINGS" } } },
     });
   }
 
-  private async getMonthlyKaizenTrend(where: Prisma.KaizenWhereInput): Promise<ChartPoint[]> {
+  async getMonthlyKaizenTrend(where: Prisma.KaizenWhereInput): Promise<ChartPoint[]> {
     const kaizens = await prisma.kaizen.findMany({ where, select: { createdAt: true } });
     return bucketSumByMonth(kaizens.map((k) => ({ date: k.createdAt, value: 1 })));
   }
 
-  private async getDepartmentSubmissionsChart(where: Prisma.KaizenWhereInput): Promise<ChartPoint[]> {
+  async getDepartmentSubmissionsChart(where: Prisma.KaizenWhereInput): Promise<ChartPoint[]> {
     const rows = await prisma.kaizen.groupBy({ by: ["departmentId"], where, _count: { _all: true } });
     if (rows.length === 0) return [];
     const departments = await prisma.department.findMany({
@@ -255,7 +255,7 @@ class AnalyticsService {
       .sort((a, b) => b.value - a.value);
   }
 
-  private async getSavingsTrendChart(where: Prisma.KaizenWhereInput): Promise<ChartPoint[]> {
+  async getSavingsTrendChart(where: Prisma.KaizenWhereInput): Promise<ChartPoint[]> {
     const impacts = await prisma.businessImpact.findMany({
       where: { kaizen: where },
       select: { createdAt: true, moneySaved: true },
@@ -315,7 +315,7 @@ class AnalyticsService {
 
   /** Departments have no direct points total of their own — ranked by summing their active
    * users' `totalPoints`, the same underlying figure the company-wide employee leaderboard uses. */
-  private async getTopDepartments(limit: number): Promise<LeaderboardPreviewEntry[]> {
+  async getTopDepartments(limit: number): Promise<LeaderboardPreviewEntry[]> {
     const users = await prisma.user.findMany({
       where: { isActive: true, departmentId: { not: null } },
       select: {
@@ -457,6 +457,7 @@ class AnalyticsService {
     const [
       statusCounts,
       avgScore,
+      avgReviewTimeHours,
       avgImplementationTimeDays,
       kaizensWithEstimatedSavings,
       actualSavings,
@@ -466,6 +467,7 @@ class AnalyticsService {
     ] = await Promise.all([
       this.getStatusCounts(kaizenWhere),
       this.getAvgScore(kaizenWhere),
+      this.getAvgReviewTimeHours(kaizenWhere),
       this.getAvgImplementationTimeDays(kaizenWhere),
       this.getKaizensWithEstimatedSavingsCount(kaizenWhere),
       this.getActualSavings(kaizenWhere),
@@ -482,6 +484,7 @@ class AnalyticsService {
       statusCounts,
       approvalRate,
       avgScore,
+      avgReviewTimeHours,
       avgImplementationTimeDays,
       pendingReviews: statusCounts.submitted + statusCounts.underReview,
       pendingImplementations: statusCounts.implementationPending,
@@ -512,7 +515,7 @@ class AnalyticsService {
     return { statusCounts, avgScore, avgTimeToApprovalHours };
   }
 
-  private scopeForRequester(requester: Requester): Prisma.KaizenWhereInput {
+  scopeForRequester(requester: Requester): Prisma.KaizenWhereInput {
     if (COMPANY_WIDE_ROLES.includes(requester.role)) return {};
     if (requester.role === "DEPARTMENT_MANAGER") {
       return requester.departmentId ? { departmentId: requester.departmentId } : { id: "" };

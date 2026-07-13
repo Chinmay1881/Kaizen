@@ -8,6 +8,7 @@ import {
   AtSign,
   BookOpen,
   CheckCircle2,
+  FileBarChart,
   FileText,
   Gift,
   HardHat,
@@ -19,6 +20,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/utils";
 import type { Notification, NotificationType } from "@/features/notifications/types/notification";
 import { formatDate } from "@/utils/format";
@@ -37,6 +39,7 @@ const TYPE_ICON: Record<NotificationType, LucideIcon> = {
   ANNOUNCEMENT: Megaphone,
   COMMENT_ADDED: MessageSquare,
   MENTION: AtSign,
+  REPORT_READY: FileBarChart,
 };
 
 interface NotificationItemProps {
@@ -44,9 +47,16 @@ interface NotificationItemProps {
   onMarkRead: (id: string) => void;
 }
 
+/** `ReportExport` links to the Download Center rather than a direct file link — downloads are
+ * authenticated (Bearer token) fetches, not something a plain `<a href>` to the API can do, so the
+ * notification takes the user to the page with the "Download" button instead ("Allow download
+ * from notification" — Part 13 — satisfied via that one extra click). */
 function getHref(notification: Notification): string | null {
   if (notification.entityType === "Kaizen" && notification.entityId) {
     return `/kaizen/${notification.entityId}`;
+  }
+  if (notification.entityType === "ReportExport" && notification.entityId) {
+    return `${ROUTES.REPORTS_HISTORY}?highlight=${notification.entityId}`;
   }
   return null;
 }

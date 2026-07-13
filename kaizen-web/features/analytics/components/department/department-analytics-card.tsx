@@ -1,5 +1,7 @@
-import { Building2, CheckCircle2, Clock3, IndianRupee, PiggyBank, Star, Timer } from "lucide-react";
+import Link from "next/link";
+import { Building2, CheckCircle2, Clock3, FileBarChart, IndianRupee, PiggyBank, Star, Timer } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChartCard } from "@/components/charts/line-chart-card";
 import { StatCard } from "@/features/analytics/components/shared/stat-card";
@@ -36,10 +38,18 @@ export function DepartmentAnalyticsCard({ data }: DepartmentAnalyticsCardProps) 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Building2 className="h-4 w-4" />
-          {data.departmentName}
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Building2 className="h-4 w-4" />
+            {data.departmentName}
+          </CardTitle>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/reports?reportType=DEPARTMENT&departmentId=${data.departmentId}`}>
+              <FileBarChart className="h-4 w-4" />
+              Generate Report
+            </Link>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">

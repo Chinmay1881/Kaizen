@@ -1,4 +1,4 @@
-export type SavedViewEntityType = "KAIZEN_LIST" | "REVIEW_QUEUE" | "IMPLEMENTATION_QUEUE" | "ADMIN_USERS";
+export type SavedViewEntityType = "KAIZEN_LIST" | "REVIEW_QUEUE" | "IMPLEMENTATION_QUEUE" | "ADMIN_USERS" | "REPORTS";
 
 export type SavedViewFilters = Record<string, string | number | boolean>;
 

@@ -10,6 +10,10 @@ import { implementationsRouter } from "./v1/implementations.routes.js";
 import { kaizensRouter } from "./v1/kaizens.routes.js";
 import { meRouter } from "./v1/me.routes.js";
 import { notificationsRouter } from "./v1/notifications.routes.js";
+import { reportExportsRouter } from "./v1/report-exports.routes.js";
+import { reportSchedulesRouter } from "./v1/report-schedules.routes.js";
+import { reportTemplatesRouter } from "./v1/report-templates.routes.js";
+import { reportsRouter } from "./v1/reports.routes.js";
 import { reviewsRouter } from "./v1/reviews.routes.js";
 import { savedViewsRouter } from "./v1/saved-views.routes.js";
 import { scoringRouter } from "./v1/scoring.routes.js";
@@ -33,5 +37,17 @@ v1Router.use("/admin", requireAuth, attachUser, adminRouter);
 v1Router.use("/analytics", requireAuth, attachUser, analyticsRouter);
 v1Router.use("/search", requireAuth, attachUser, searchRouter);
 v1Router.use("/saved-views", requireAuth, attachUser, savedViewsRouter);
+// More specific /reports/* mounts must be registered BEFORE the bare /reports mount. Express's
+// `.use(path, ...)` matches by prefix, so a request to /reports/exports otherwise matches
+// `/reports` first, gets routed into `reportsRouter` (which has no matching route for
+// "/exports"), falls through via `next()`, and re-enters `requireAuth` a second time on the same
+// request — corrupting Clerk's `req.auth` (a function `requireAuth` overwrites with a plain
+// object after its first successful run) and throwing `req.auth is not a function` on the second
+// pass. Ordering the specific mounts first means they match and terminate the chain before the
+// bare `/reports` layer is ever reached.
+v1Router.use("/reports/exports", requireAuth, attachUser, reportExportsRouter);
+v1Router.use("/reports/schedules", requireAuth, attachUser, reportSchedulesRouter);
+v1Router.use("/reports/templates", requireAuth, attachUser, reportTemplatesRouter);
+v1Router.use("/reports", requireAuth, attachUser, reportsRouter);
 // Mounted at root: resolves to the API spec's unprefixed `/leaderboard` and `/achievements` paths.
 v1Router.use("/", requireAuth, attachUser, gamificationRouter);

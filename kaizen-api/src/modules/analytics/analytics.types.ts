@@ -69,6 +69,7 @@ export interface DepartmentAnalyticsItem {
   statusCounts: StatusCounts;
   approvalRate: number;
   avgScore: number | null;
+  avgReviewTimeHours: number | null;
   avgImplementationTimeDays: number | null;
   pendingReviews: number;
   pendingImplementations: number;

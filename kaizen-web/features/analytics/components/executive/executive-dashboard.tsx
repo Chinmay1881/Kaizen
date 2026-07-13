@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { FileBarChart } from "lucide-react";
 
 import { AreaChartCard } from "@/components/charts/area-chart-card";
 import { BarChartCard } from "@/components/charts/bar-chart-card";
 import { LineChartCard } from "@/components/charts/line-chart-card";
 import { PieChartCard } from "@/components/charts/pie-chart-card";
+import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { Input } from "@/components/ui/input";
@@ -30,33 +33,43 @@ export function ExecutiveDashboard() {
     return <ErrorState title="Couldn't load analytics" description={message} onRetry={() => query.refetch()} />;
   }
 
+  const reportHref = `/reports?reportType=EXECUTIVE_SUMMARY${dateFrom ? `&dateFrom=${dateFrom}` : ""}${dateTo ? `&dateTo=${dateTo}` : ""}`;
+
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="analytics-date-from" className="text-xs">
-            From
-          </Label>
-          <Input
-            id="analytics-date-from"
-            type="date"
-            value={dateFrom}
-            onChange={(event) => setDateFrom(event.target.value)}
-            className="w-auto"
-          />
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="analytics-date-from" className="text-xs">
+              From
+            </Label>
+            <Input
+              id="analytics-date-from"
+              type="date"
+              value={dateFrom}
+              onChange={(event) => setDateFrom(event.target.value)}
+              className="w-auto"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="analytics-date-to" className="text-xs">
+              To
+            </Label>
+            <Input
+              id="analytics-date-to"
+              type="date"
+              value={dateTo}
+              onChange={(event) => setDateTo(event.target.value)}
+              className="w-auto"
+            />
+          </div>
         </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="analytics-date-to" className="text-xs">
-            To
-          </Label>
-          <Input
-            id="analytics-date-to"
-            type="date"
-            value={dateTo}
-            onChange={(event) => setDateTo(event.target.value)}
-            className="w-auto"
-          />
-        </div>
+        <Button variant="outline" size="sm" asChild>
+          <Link href={reportHref}>
+            <FileBarChart className="h-4 w-4" />
+            Generate Report
+          </Link>
+        </Button>
       </div>
 
       {query.isLoading || !query.data ? (

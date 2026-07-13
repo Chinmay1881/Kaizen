@@ -4,9 +4,11 @@ import { createApp } from "./app.js";
 import { env } from "./config/env.js";
 import { initializeEvents } from "./events/index.js";
 import { startBackgroundJobs } from "./jobs/leaderboard-refresh.job.js";
+import { startReportScheduleJob } from "./jobs/report-schedule.job.js";
 
 initializeEvents();
 startBackgroundJobs();
+startReportScheduleJob();
 
 const app = createApp();
 

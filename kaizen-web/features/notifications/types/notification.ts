@@ -11,7 +11,8 @@ export type NotificationType =
   | "KNOWLEDGE_BASE_PUBLISHED"
   | "ANNOUNCEMENT"
   | "COMMENT_ADDED"
-  | "MENTION";
+  | "MENTION"
+  | "REPORT_READY";
 
 export interface Notification {
   id: string;
