@@ -2,8 +2,12 @@
 
 import { motion, type HTMLMotionProps } from "framer-motion";
 
+import { DURATION, EASE } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
+// Same hidden/visible shape as `fadeInUpVariants` (`lib/motion.ts`) — defined locally rather than
+// importing that variant object directly because its `visible.transition` has no `delay`, and a
+// variant's own embedded transition takes precedence over a `transition` prop passed alongside it.
 const fadeInVariants = {
   hidden: { opacity: 0, y: 8 },
   visible: { opacity: 1, y: 0 },
@@ -19,7 +23,7 @@ export function FadeIn({ className, delay = 0, children, ...props }: FadeInProps
       initial="hidden"
       animate="visible"
       variants={fadeInVariants}
-      transition={{ duration: 0.2, delay, ease: "easeOut" }}
+      transition={{ duration: DURATION.base, delay, ease: EASE.out }}
       className={cn(className)}
       {...props}
     >

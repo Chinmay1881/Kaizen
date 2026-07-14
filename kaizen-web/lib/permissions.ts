@@ -19,3 +19,9 @@ export function canAccessAdmin(role: UserRole): boolean {
 export function canReview(role: UserRole): boolean {
   return hasMinimumRole(role, "DEPARTMENT_MANAGER");
 }
+
+/** Mirrors the backend's `COMPANY_WIDE_ROLES` (kaizen-api analytics/report services) — HR, CMD,
+ * and Super Admin see company-wide data; Department Manager sees only their own department. */
+export function canViewCompanyAnalytics(role: UserRole): boolean {
+  return hasMinimumRole(role, "HR");
+}

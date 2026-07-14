@@ -1,69 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import {
-  Trophy,
-  Award,
-  AlertCircle,
-  AtSign,
-  BookOpen,
-  CheckCircle2,
-  FileBarChart,
-  FileText,
-  Gift,
-  HardHat,
-  Megaphone,
-  MessageSquare,
-  Rocket,
-  UserCheck,
-  XCircle,
-  type LucideIcon,
-} from "lucide-react";
 
-import { ROUTES } from "@/constants/routes";
+import { Trophy } from "lucide-react";
+
 import { cn } from "@/lib/utils";
-import type { Notification, NotificationType } from "@/features/notifications/types/notification";
+import type { Notification } from "@/features/notifications/types/notification";
+import { getNotificationHref, NOTIFICATION_TYPE_ICON } from "@/features/notifications/utils/notification-icon";
 import { formatDate } from "@/utils/format";
-
-const TYPE_ICON: Record<NotificationType, LucideIcon> = {
-  KAIZEN_SUBMITTED: FileText,
-  KAIZEN_APPROVED: CheckCircle2,
-  KAIZEN_REJECTED: XCircle,
-  KAIZEN_NEEDS_CHANGES: AlertCircle,
-  KAIZEN_ASSIGNED: UserCheck,
-  IMPLEMENTATION_STARTED: HardHat,
-  IMPLEMENTATION_COMPLETED: Rocket,
-  REWARD_ISSUED: Gift,
-  ACHIEVEMENT_UNLOCKED: Award,
-  KNOWLEDGE_BASE_PUBLISHED: BookOpen,
-  ANNOUNCEMENT: Megaphone,
-  COMMENT_ADDED: MessageSquare,
-  MENTION: AtSign,
-  REPORT_READY: FileBarChart,
-};
 
 interface NotificationItemProps {
   notification: Notification;
   onMarkRead: (id: string) => void;
 }
 
-/** `ReportExport` links to the Download Center rather than a direct file link — downloads are
- * authenticated (Bearer token) fetches, not something a plain `<a href>` to the API can do, so the
- * notification takes the user to the page with the "Download" button instead ("Allow download
- * from notification" — Part 13 — satisfied via that one extra click). */
-function getHref(notification: Notification): string | null {
-  if (notification.entityType === "Kaizen" && notification.entityId) {
-    return `/kaizen/${notification.entityId}`;
-  }
-  if (notification.entityType === "ReportExport" && notification.entityId) {
-    return `${ROUTES.REPORTS_HISTORY}?highlight=${notification.entityId}`;
-  }
-  return null;
-}
-
 export function NotificationItem({ notification, onMarkRead }: NotificationItemProps) {
-  const Icon = TYPE_ICON[notification.type] ?? Trophy;
-  const href = getHref(notification);
+  const Icon = NOTIFICATION_TYPE_ICON[notification.type] ?? Trophy;
+  const href = getNotificationHref(notification);
 
   const content = (
     <div

@@ -1,22 +1,20 @@
 import type { Metadata } from "next";
 
-import { PageHeader } from "@/components/layout/page-header";
 import { ReportsGuard } from "@/features/reports/components/reports-guard";
 import { ReportsSubNav } from "@/features/reports/components/reports-subnav";
-import { ReportsView } from "@/features/reports/components/reports-view";
+import { ReportStudioView } from "@/features/reports/components/studio/report-studio-view";
 
 export const metadata: Metadata = {
-  title: "Reports",
+  title: "Report Studio",
 };
 
 export default function ReportsPage() {
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-      <PageHeader title="Reports" description="Build and preview reports from real Kaizen data." />
-      <ReportsGuard>
+    <ReportsGuard>
+      <div className="flex flex-col gap-4">
         <ReportsSubNav />
-        <ReportsView />
-      </ReportsGuard>
-    </div>
+        <ReportStudioView />
+      </div>
+    </ReportsGuard>
   );
 }

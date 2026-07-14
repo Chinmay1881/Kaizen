@@ -47,6 +47,13 @@ export const adminService = {
     };
   },
 
+  getUser: async (token: string | null, id: string): Promise<AdminUser> => {
+    const response = await apiClient<ApiSuccessResponse<AdminUser>>(`/users/${id}`, {
+      token: token ?? undefined,
+    });
+    return response.data;
+  },
+
   createUser: async (token: string | null, input: CreateUserInput): Promise<AdminUser> => {
     const response = await apiClient<ApiSuccessResponse<AdminUser>>("/users", {
       method: "POST",
@@ -67,10 +74,6 @@ export const adminService = {
       body: JSON.stringify(input),
     });
     return response.data;
-  },
-
-  deactivateUser: async (token: string | null, id: string): Promise<void> => {
-    await apiClient<undefined>(`/users/${id}`, { method: "DELETE", token: token ?? undefined });
   },
 
   listDepartments: async (token: string | null): Promise<AdminDepartment[]> => {

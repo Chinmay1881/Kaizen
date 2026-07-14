@@ -1,12 +1,5 @@
 import { KAIZEN_PRIORITIES, KAIZEN_PRIORITY_LABELS } from "@/constants/kaizen-priority";
 import { KAIZEN_STATUS_LABELS } from "@/constants/kaizen-status";
-import type { KaizenSort } from "@/features/kaizen/types/kaizen";
-
-export const SORT_OPTIONS: { value: KaizenSort; label: string }[] = [
-  { value: "newest", label: "Newest" },
-  { value: "oldest", label: "Oldest" },
-  { value: "updated", label: "Recently Updated" },
-];
 
 export const STATUS_FILTER_OPTIONS = Object.entries(KAIZEN_STATUS_LABELS).map(([value, label]) => ({
   value,

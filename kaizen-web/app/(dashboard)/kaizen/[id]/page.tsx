@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { MyIdeasDetailView } from "@/features/kaizen/components/detail/my-ideas-detail-view";
+import { KaizenCaseStudy } from "@/features/kaizen/components/workspace/kaizen-case-study";
 
 export const metadata: Metadata = {
   title: "Kaizen Details",
@@ -13,9 +13,5 @@ interface KaizenDetailPageProps {
 export default async function KaizenDetailPage({ params }: KaizenDetailPageProps) {
   const { id } = await params;
 
-  return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-      <MyIdeasDetailView id={id} />
-    </div>
-  );
+  return <KaizenCaseStudy id={id} />;
 }

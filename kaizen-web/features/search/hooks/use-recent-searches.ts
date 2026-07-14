@@ -5,14 +5,17 @@ import { useCallback, useState } from "react";
 const STORAGE_PREFIX = "kaizen:recent-searches:";
 const MAX_RECENT = 10;
 
-function storageKey(userId: string): string {
-  return `${STORAGE_PREFIX}${userId}`;
+/** `namespace` keeps separate recent-search lists per search context (e.g. the Review Inbox vs.
+ * the global command palette) without colliding — omitted, it's the exact key format the command
+ * palette already uses, so existing stored searches there are unaffected. */
+function storageKey(userId: string, namespace?: string): string {
+  return namespace ? `${STORAGE_PREFIX}${namespace}:${userId}` : `${STORAGE_PREFIX}${userId}`;
 }
 
-function readStored(userId: string): string[] {
+function readStored(userId: string, namespace?: string): string[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem(storageKey(userId));
+    const raw = window.localStorage.getItem(storageKey(userId, namespace));
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.filter((entry): entry is string => typeof entry === "string") : [];
@@ -24,15 +27,16 @@ function readStored(userId: string): string[] {
 /** Recent Searches (Part 5) — localStorage rather than a new DB table: "per user" here means
  * per Clerk account on this browser, which fully satisfies "last 10, clickable, clear history"
  * without adding schema for what is, at most, a convenience list a user can always just retype. */
-export function useRecentSearches(userId: string | undefined) {
+export function useRecentSearches(userId: string | undefined, namespace?: string) {
   const [recent, setRecent] = useState<string[]>([]);
-  const [loadedForUserId, setLoadedForUserId] = useState<string | undefined>(undefined);
+  const [loadedFor, setLoadedFor] = useState<string | undefined>(undefined);
+  const loadKey = userId ? `${namespace ?? ""}:${userId}` : undefined;
 
   // "Adjusting state when a prop changes" (react.dev) rather than an effect — avoids the extra
   // render-then-sync cascade a useEffect-based reset would trigger every time `userId` resolves.
-  if (userId !== loadedForUserId) {
-    setLoadedForUserId(userId);
-    setRecent(userId ? readStored(userId) : []);
+  if (loadKey !== loadedFor) {
+    setLoadedFor(loadKey);
+    setRecent(userId ? readStored(userId, namespace) : []);
   }
 
   const addSearch = useCallback(
@@ -44,18 +48,18 @@ export function useRecentSearches(userId: string | undefined) {
           0,
           MAX_RECENT,
         );
-        window.localStorage.setItem(storageKey(userId), JSON.stringify(next));
+        window.localStorage.setItem(storageKey(userId, namespace), JSON.stringify(next));
         return next;
       });
     },
-    [userId],
+    [userId, namespace],
   );
 
   const clear = useCallback(() => {
     if (!userId) return;
-    window.localStorage.removeItem(storageKey(userId));
+    window.localStorage.removeItem(storageKey(userId, namespace));
     setRecent([]);
-  }, [userId]);
+  }, [userId, namespace]);
 
   return { recent, addSearch, clear };
 }

@@ -153,7 +153,7 @@ export function SavedViewsBar({ entityType, currentFilters, onApply }: SavedView
           <Button size="sm" className="h-8" onClick={handleCreate} disabled={createView.isPending}>
             Save
           </Button>
-          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setIsCreating(false)}>
+          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setIsCreating(false)} aria-label="Cancel saving view">
             <X className="h-3.5 w-3.5" />
           </Button>
         </div>

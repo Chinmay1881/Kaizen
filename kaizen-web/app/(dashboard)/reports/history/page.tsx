@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { ReportDownloadCenter } from "@/features/reports/components/report-download-center";
+import { DownloadCenterView } from "@/features/reports/components/studio/download-center-view";
 import { ReportsGuard } from "@/features/reports/components/reports-guard";
 import { ReportsSubNav } from "@/features/reports/components/reports-subnav";
 
@@ -13,7 +13,7 @@ export default function ReportsHistoryPage() {
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <ReportsGuard>
         <ReportsSubNav />
-        <ReportDownloadCenter />
+        <DownloadCenterView />
       </ReportsGuard>
     </div>
   );

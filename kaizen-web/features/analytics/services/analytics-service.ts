@@ -5,6 +5,7 @@ import type {
   AnalyticsOverview,
   DepartmentAnalyticsItem,
   EmployeeAnalytics,
+  LeaderboardPreviewEntry,
 } from "@/features/analytics/types/analytics";
 
 function buildDateRangeQuery(range: AnalyticsDateRange): string {
@@ -40,6 +41,16 @@ export const analyticsService = {
 
   getPersonal: async (token: string | null): Promise<EmployeeAnalytics> => {
     const response = await apiClient<ApiSuccessResponse<EmployeeAnalytics>>("/analytics/personal", {
+      token: token ?? undefined,
+    });
+    return response.data;
+  },
+
+  /** GET /analytics/employees (HR/CMD/Super Admin) — already built server-side, just never wired
+   * to a frontend hook before now. Same points-ranked shape as `AnalyticsOverview.topEmployees`,
+   * not limited to 5. */
+  getEmployees: async (token: string | null): Promise<LeaderboardPreviewEntry[]> => {
+    const response = await apiClient<ApiSuccessResponse<LeaderboardPreviewEntry[]>>("/analytics/employees", {
       token: token ?? undefined,
     });
     return response.data;

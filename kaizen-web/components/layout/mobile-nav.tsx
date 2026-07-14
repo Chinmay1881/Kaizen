@@ -4,27 +4,28 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
-import { getFoundationNav, isFoundationNavItemActive } from "@/components/layout/foundation-nav";
+import { getFoundationNavFlat, isFoundationNavItemActive } from "@/components/layout/foundation-nav";
 import { useCurrentUser } from "@/features/auth/hooks/use-current-user";
 
 export function MobileNav() {
   const pathname = usePathname();
   const { data: currentUser } = useCurrentUser();
-  const navItems = getFoundationNav(currentUser?.role);
+  const navItems = getFoundationNavFlat(currentUser?.role);
 
   return (
-    <nav className="bg-background fixed inset-x-0 bottom-0 z-40 flex border-t lg:hidden">
+    <nav className="bg-background/95 fixed inset-x-0 bottom-0 z-40 flex border-t backdrop-blur lg:hidden">
       {navItems.map((item) => {
         const Icon = item.icon;
-        const isActive = isFoundationNavItemActive(pathname, item.href);
+        const isActive = isFoundationNavItemActive(pathname, item.href) || pathname === item.href;
 
         return (
           <Link
             key={item.href}
             href={item.href}
+            aria-current={isActive ? "page" : undefined}
             className={cn(
-              "flex flex-1 flex-col items-center gap-1 py-3 text-xs",
-              isActive ? "text-primary" : "text-muted-foreground",
+              "flex flex-1 flex-col items-center gap-1 py-2.5 text-xs font-medium transition-colors duration-150",
+              isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
             )}
           >
             <Icon className="h-5 w-5" />

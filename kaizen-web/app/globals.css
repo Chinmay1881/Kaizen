@@ -2,67 +2,130 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Design tokens — Milestone 12 Chunk 1.
+ *
+ * Neutrals carry a faint warm tint (hue 55, chroma 0.004-0.008) instead of pure 0-chroma gray —
+ * a deliberately "chosen" neutral rather than an inherited default, paired with the brand's warm
+ * red/terracotta accent (Muliya Gold & Jewellers). `--primary` (brand accent) and `--destructive`
+ * (true error red) were previously the same hue/value, a documented pre-existing issue
+ * (PROJECT_STATUS.md Known Issues: "Color-token reuse") — now split into genuinely distinct hues
+ * so a destructive action never visually reads as "just another primary button."
+ *
+ * Four new domain tokens (`--achievement`, `--rewards`, `--implementation`, `--business-impact`)
+ * sit alongside the semantic set (success/warning/error/info) — semantic colors describe a
+ * *state*, domain colors describe a *category* of data (an achievement badge is always gold
+ * regardless of whether unlocking it was "good news", the way a status pill would be).
+ */
 :root {
-  --background: oklch(0.985 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --background: oklch(0.985 0.003 60);
+  --foreground: oklch(0.18 0.008 60);
+  --card: oklch(0.995 0.002 60);
+  --card-foreground: oklch(0.18 0.008 60);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.52 0.22 25);
-  --primary-foreground: oklch(0.985 0 0);
+  --popover-foreground: oklch(0.18 0.008 60);
+
+  --primary: oklch(0.53 0.19 25);
+  --primary-foreground: oklch(0.99 0.004 60);
   --secondary: oklch(0.78 0.12 85);
-  --secondary-foreground: oklch(0.2 0.02 85);
-  --muted: oklch(0.96 0 0);
-  --muted-foreground: oklch(0.45 0 0);
-  --accent: oklch(0.96 0 0);
-  --accent-foreground: oklch(0.145 0 0);
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(0.985 0 0);
-  --success: oklch(0.62 0.17 145);
-  --success-foreground: oklch(0.985 0 0);
-  --warning: oklch(0.75 0.15 65);
-  --warning-foreground: oklch(0.2 0.02 65);
-  --info: oklch(0.58 0.15 250);
-  --info-foreground: oklch(0.985 0 0);
-  --border: oklch(0.9 0 0);
-  --input: oklch(0.9 0 0);
-  --ring: oklch(0.52 0.22 25);
-  --radius: 0.75rem;
-  --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-border: oklch(0.92 0 0);
+  --secondary-foreground: oklch(0.22 0.03 85);
+
+  --muted: oklch(0.955 0.005 60);
+  --muted-foreground: oklch(0.485 0.008 55);
+  --accent: oklch(0.95 0.008 55);
+  --accent-foreground: oklch(0.18 0.008 60);
+
+  --destructive: oklch(0.575 0.225 18);
+  --destructive-foreground: oklch(0.99 0.004 60);
+  --success: oklch(0.62 0.15 150);
+  --success-foreground: oklch(0.99 0.01 150);
+  --warning: oklch(0.78 0.15 80);
+  --warning-foreground: oklch(0.22 0.03 80);
+  --info: oklch(0.6 0.14 240);
+  --info-foreground: oklch(0.99 0.01 240);
+
+  /* Domain colors — used for category badges/icons tied to a specific concept, not a state. */
+  --achievement: oklch(0.77 0.15 86);
+  --achievement-foreground: oklch(0.24 0.03 86);
+  --rewards: oklch(0.56 0.19 305);
+  --rewards-foreground: oklch(0.98 0.01 305);
+  --implementation: oklch(0.55 0.17 258);
+  --implementation-foreground: oklch(0.98 0.01 258);
+  --business-impact: oklch(0.58 0.12 168);
+  --business-impact-foreground: oklch(0.98 0.01 168);
+
+  --border: oklch(0.9 0.006 55);
+  --input: oklch(0.9 0.006 55);
+  --ring: oklch(0.53 0.19 25);
+  --radius: 0.625rem;
+
+  --sidebar: oklch(0.99 0.003 60);
+  --sidebar-foreground: oklch(0.18 0.008 60);
+  --sidebar-border: oklch(0.92 0.006 55);
+  --sidebar-accent: oklch(0.95 0.008 55);
+
+  /* Layered, low-opacity shadows (a warm-tinted near-black, never pure #000) — soft elevation
+     instead of a hard drop shadow. Each step adds a second, tighter shadow for a subtle "grounded"
+     look rather than a single blurry halo. */
+  --shadow-color: 40 20% 8%;
+  --shadow-xs: 0 1px 2px hsl(var(--shadow-color) / 0.04);
+  --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.05), 0 1px 1px hsl(var(--shadow-color) / 0.04);
+  --shadow-md: 0 4px 10px hsl(var(--shadow-color) / 0.06), 0 1px 3px hsl(var(--shadow-color) / 0.05);
+  --shadow-lg: 0 12px 24px hsl(var(--shadow-color) / 0.08), 0 2px 6px hsl(var(--shadow-color) / 0.05);
+  --shadow-xl: 0 20px 40px hsl(var(--shadow-color) / 0.1), 0 4px 10px hsl(var(--shadow-color) / 0.06);
 }
 
 .dark {
-  --background: oklch(0.13 0 0);
-  --foreground: oklch(0.96 0 0);
-  --card: oklch(0.17 0 0);
-  --card-foreground: oklch(0.96 0 0);
-  --popover: oklch(0.17 0 0);
-  --popover-foreground: oklch(0.96 0 0);
-  --primary: oklch(0.58 0.22 25);
-  --primary-foreground: oklch(0.985 0 0);
+  --background: oklch(0.16 0.006 60);
+  --foreground: oklch(0.95 0.004 60);
+  --card: oklch(0.2 0.007 60);
+  --card-foreground: oklch(0.95 0.004 60);
+  --popover: oklch(0.21 0.007 60);
+  --popover-foreground: oklch(0.95 0.004 60);
+
+  --primary: oklch(0.6 0.19 25);
+  --primary-foreground: oklch(0.99 0.004 60);
   --secondary: oklch(0.72 0.12 85);
-  --secondary-foreground: oklch(0.15 0.02 85);
-  --muted: oklch(0.22 0 0);
-  --muted-foreground: oklch(0.65 0 0);
-  --accent: oklch(0.22 0 0);
-  --accent-foreground: oklch(0.96 0 0);
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(0.985 0 0);
-  --success: oklch(0.62 0.17 145);
-  --success-foreground: oklch(0.985 0 0);
-  --warning: oklch(0.75 0.15 65);
-  --warning-foreground: oklch(0.15 0.02 65);
-  --info: oklch(0.58 0.15 250);
-  --info-foreground: oklch(0.985 0 0);
-  --border: oklch(0.28 0 0);
-  --input: oklch(0.28 0 0);
-  --ring: oklch(0.58 0.22 25);
-  --sidebar: oklch(0.15 0 0);
-  --sidebar-foreground: oklch(0.96 0 0);
-  --sidebar-border: oklch(0.25 0 0);
+  --secondary-foreground: oklch(0.16 0.02 85);
+
+  --muted: oklch(0.25 0.008 60);
+  --muted-foreground: oklch(0.66 0.008 55);
+  --accent: oklch(0.27 0.01 55);
+  --accent-foreground: oklch(0.95 0.004 60);
+
+  --destructive: oklch(0.62 0.22 18);
+  --destructive-foreground: oklch(0.99 0.004 60);
+  --success: oklch(0.66 0.15 150);
+  --success-foreground: oklch(0.14 0.02 150);
+  --warning: oklch(0.78 0.15 80);
+  --warning-foreground: oklch(0.16 0.02 80);
+  --info: oklch(0.65 0.14 240);
+  --info-foreground: oklch(0.14 0.02 240);
+
+  --achievement: oklch(0.78 0.14 86);
+  --achievement-foreground: oklch(0.16 0.02 86);
+  --rewards: oklch(0.65 0.18 305);
+  --rewards-foreground: oklch(0.14 0.02 305);
+  --implementation: oklch(0.64 0.16 258);
+  --implementation-foreground: oklch(0.14 0.02 258);
+  --business-impact: oklch(0.65 0.12 168);
+  --business-impact-foreground: oklch(0.14 0.02 168);
+
+  --border: oklch(0.3 0.008 55);
+  --input: oklch(0.3 0.008 55);
+  --ring: oklch(0.6 0.19 25);
+
+  --sidebar: oklch(0.135 0.006 60);
+  --sidebar-foreground: oklch(0.95 0.004 60);
+  --sidebar-border: oklch(0.27 0.008 55);
+  --sidebar-accent: oklch(0.24 0.01 55);
+
+  --shadow-color: 0 0% 0%;
+  --shadow-xs: 0 1px 2px hsl(var(--shadow-color) / 0.3);
+  --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.35), 0 1px 1px hsl(var(--shadow-color) / 0.3);
+  --shadow-md: 0 4px 10px hsl(var(--shadow-color) / 0.4), 0 1px 3px hsl(var(--shadow-color) / 0.35);
+  --shadow-lg: 0 12px 24px hsl(var(--shadow-color) / 0.45), 0 2px 6px hsl(var(--shadow-color) / 0.35);
+  --shadow-xl: 0 20px 40px hsl(var(--shadow-color) / 0.5), 0 4px 10px hsl(var(--shadow-color) / 0.4);
 }
 
 @theme inline {
@@ -88,17 +151,98 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
+  --color-achievement: var(--achievement);
+  --color-achievement-foreground: var(--achievement-foreground);
+  --color-rewards: var(--rewards);
+  --color-rewards-foreground: var(--rewards-foreground);
+  --color-implementation: var(--implementation);
+  --color-implementation-foreground: var(--implementation-foreground);
+  --color-business-impact: var(--business-impact);
+  --color-business-impact-foreground: var(--business-impact-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent: var(--sidebar-accent);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 6px);
+  --radius-2xl: calc(var(--radius) + 12px);
+
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+
   --font-sans: var(--font-inter);
+
+  --animate-shimmer: shimmer 1.8s ease-in-out infinite;
+  --animate-fade-in: fade-in 0.3s ease-out;
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Radix data-[state] driven enter/exit for Dialog/AlertDialog overlays + surfaces. No
+     tailwindcss-animate/tw-animate-css plugin is installed, so these are referenced directly via
+     Tailwind's `animate-[name_duration_ease]` arbitrary syntax rather than an `animate-in` utility
+     that would silently resolve to nothing in this project. */
+  @keyframes overlay-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes overlay-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes surface-in {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+  }
+  @keyframes surface-out {
+    from {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.98);
+    }
+  }
 }
 
 @layer base {
@@ -108,5 +252,62 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings:
+      "cv11" 1,
+      "ss01" 1;
+  }
+
+  /* Tabular figures wherever numbers stack in a column (metric cards, tables) — digits keep a
+     fixed width so they don't visually jitter as values change. */
+  .tabular-nums,
+  [data-metric] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+  }
+
+  /* A single, consistent focus treatment for every interactive element — including native ones
+     shadcn's `focus-visible:ring-*` utilities don't reach (raw <a>, <summary>, etc.). */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Shared hover-lift used by interactive cards (metric cards, quick actions, list rows) — a
+     small, consistent physical response rather than each component inventing its own. */
+  .interactive-lift {
+    @apply transition-[transform,box-shadow] duration-200 ease-out;
+  }
+  .interactive-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .skeleton-shimmer {
+    background-image: linear-gradient(
+      90deg,
+      var(--color-muted) 25%,
+      color-mix(in oklch, var(--color-muted), var(--color-foreground) 6%) 50%,
+      var(--color-muted) 75%
+    );
+    background-size: 200% 100%;
+    animation: var(--animate-shimmer);
   }
 }

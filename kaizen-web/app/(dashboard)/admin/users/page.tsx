@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
-import { PageHeader } from "@/components/layout/page-header";
 import { AdminGuard } from "@/features/admin/components/shared/admin-guard";
-import { UserList } from "@/features/admin/components/users/user-list";
+import { AdminSubNav } from "@/features/admin/components/control-center/admin-subnav";
+import { UserWorkspaceView } from "@/features/admin/components/control-center/user-workspace-view";
 
 export const metadata: Metadata = {
   title: "User Management",
@@ -10,10 +10,10 @@ export const metadata: Metadata = {
 
 export default function AdminUsersPage() {
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-      <PageHeader title="User Management" description="Create accounts, assign roles and departments, deactivate access." />
+    <div className="flex w-full flex-col gap-4">
       <AdminGuard>
-        <UserList />
+        <AdminSubNav />
+        <UserWorkspaceView />
       </AdminGuard>
     </div>
   );

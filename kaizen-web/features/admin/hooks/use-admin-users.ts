@@ -21,12 +21,26 @@ export function useAdminUsers(params: AdminUserListParams) {
   });
 }
 
+/** Wires up `GET /users/:id` — an existing, previously-unused-by-the-frontend endpoint — so the
+ * User Workspace can keep a selected user's full profile in view even if a filter/page change
+ * scrolls them out of the currently loaded list. */
+export function useAdminUser(id: string | null) {
+  const { isLoaded, isSignedIn, getToken } = useAuth();
+
+  return useQuery({
+    queryKey: ["admin", "users", "detail", id],
+    queryFn: async () => adminService.getUser(await getToken(), id!),
+    enabled: isLoaded && isSignedIn && Boolean(id),
+  });
+}
+
 function useInvalidateAdminUsers() {
   const queryClient = useQueryClient();
   return () => {
     void queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
     void queryClient.invalidateQueries({ queryKey: ["admin", "departments"] });
   };
+  // Note: ["admin", "users"] already covers ["admin", "users", "detail", id] as a prefix match.
 }
 
 export function useCreateAdminUser() {
@@ -46,16 +60,6 @@ export function useUpdateAdminUser() {
   return useMutation({
     mutationFn: async ({ id, input }: { id: string; input: UpdateUserInput }) =>
       adminService.updateUser(await getToken(), id, input),
-    onSuccess: invalidate,
-  });
-}
-
-export function useDeactivateAdminUser() {
-  const { getToken } = useAuth();
-  const invalidate = useInvalidateAdminUsers();
-
-  return useMutation({
-    mutationFn: async (id: string) => adminService.deactivateUser(await getToken(), id),
     onSuccess: invalidate,
   });
 }

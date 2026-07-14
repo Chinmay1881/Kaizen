@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
-import { PageHeader } from "@/components/layout/page-header";
 import { AdminGuard } from "@/features/admin/components/shared/admin-guard";
-import { CategoryList } from "@/features/admin/components/categories/category-list";
+import { AdminSubNav } from "@/features/admin/components/control-center/admin-subnav";
+import { CategoryGalleryView } from "@/features/admin/components/control-center/category-gallery-view";
 
 export const metadata: Metadata = {
   title: "Category Management",
@@ -10,10 +10,10 @@ export const metadata: Metadata = {
 
 export default function AdminCategoriesPage() {
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-      <PageHeader title="Category Management" description="Manage the Kaizen submission categories." />
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
       <AdminGuard>
-        <CategoryList />
+        <AdminSubNav />
+        <CategoryGalleryView />
       </AdminGuard>
     </div>
   );

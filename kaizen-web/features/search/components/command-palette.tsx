@@ -181,7 +181,7 @@ export function CommandPalette() {
   return (
     <dialog
       ref={dialogRef}
-      className="bg-transparent p-0 backdrop:bg-black/50 open:animate-in open:fade-in"
+      className="bg-transparent p-0 backdrop:bg-black/50 open:animate-fade-in"
       onClose={() => setQuery("")}
       onClick={(event) => {
         if (event.target === dialogRef.current) close();

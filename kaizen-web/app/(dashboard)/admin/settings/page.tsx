@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
-import { PageHeader } from "@/components/layout/page-header";
 import { AdminGuard } from "@/features/admin/components/shared/admin-guard";
-import { SettingsEditor } from "@/features/admin/components/settings/settings-editor";
+import { AdminSubNav } from "@/features/admin/components/control-center/admin-subnav";
+import { PlatformSettingsView } from "@/features/admin/components/control-center/platform-settings-view";
 
 export const metadata: Metadata = {
   title: "Platform Settings",
@@ -10,10 +10,10 @@ export const metadata: Metadata = {
 
 export default function AdminSettingsPage() {
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-      <PageHeader title="Platform Settings" description="Tune points values and other platform-wide configuration." />
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <AdminGuard>
-        <SettingsEditor />
+        <AdminSubNav />
+        <PlatformSettingsView />
       </AdminGuard>
     </div>
   );

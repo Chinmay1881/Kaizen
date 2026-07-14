@@ -1,51 +1,50 @@
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export function DashboardSkeleton() {
   return (
     <div className="flex flex-col gap-8">
-      <div className="space-y-2">
-        <LoadingSkeleton className="h-9 w-72" />
-        <LoadingSkeleton className="h-5 w-56" />
+      <LoadingSkeleton className="h-56 w-full rounded-2xl" />
+
+      <div className="flex flex-col gap-4">
+        <LoadingSkeleton className="h-6 w-48" />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[...new Array(4)].map((_, index) => (
+            <LoadingSkeleton key={index} className="h-[68px] w-full rounded-xl" />
+          ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        {[...new Array(5)].map((_, index) => (
-          <Card key={index}>
-            <CardContent className="flex flex-col gap-3 p-6">
-              <LoadingSkeleton className="h-10 w-10 rounded-xl" />
-              <LoadingSkeleton className="h-7 w-16" />
-              <LoadingSkeleton className="h-4 w-24" />
-            </CardContent>
-          </Card>
-        ))}
+      <div className="flex flex-col gap-4">
+        <LoadingSkeleton className="h-6 w-40" />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {[...new Array(4)].map((_, index) => (
+            <LoadingSkeleton key={index} className="h-[340px] w-full rounded-xl" />
+          ))}
+        </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {[...new Array(3)].map((_, index) => (
-          <Card key={index} className="h-64">
-            <CardHeader>
-              <LoadingSkeleton className="h-5 w-32" />
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <LoadingSkeleton className="h-4 w-full" />
-              <LoadingSkeleton className="h-4 w-full" />
-              <LoadingSkeleton className="h-4 w-2/3" />
-            </CardContent>
-          </Card>
-        ))}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <LoadingSkeleton className="h-96 w-full rounded-xl lg:col-span-2" />
+        <LoadingSkeleton className="h-96 w-full rounded-xl" />
       </div>
 
-      <Card>
-        <CardHeader>
-          <LoadingSkeleton className="h-5 w-32" />
-        </CardHeader>
-        <CardContent className="flex gap-3">
-          <LoadingSkeleton className="h-10 w-32" />
-          <LoadingSkeleton className="h-10 w-32" />
-          <LoadingSkeleton className="h-10 w-32" />
-        </CardContent>
-      </Card>
+      <div className="flex flex-col gap-4">
+        <LoadingSkeleton className="h-6 w-40" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[...new Array(3)].map((_, index) => (
+            <LoadingSkeleton key={index} className="h-[220px] w-full rounded-xl" />
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        <LoadingSkeleton className="h-6 w-32" />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[...new Array(4)].map((_, index) => (
+            <LoadingSkeleton key={index} className="h-[104px] w-full rounded-xl" />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

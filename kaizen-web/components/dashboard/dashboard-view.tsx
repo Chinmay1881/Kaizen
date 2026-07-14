@@ -1,17 +1,27 @@
 "use client";
 
-import { AnnouncementsCard } from "@/components/dashboard/announcements-card";
+import { ActivityTimeline } from "@/components/dashboard/activity-timeline";
+import { BusinessHealthCharts } from "@/components/dashboard/business-health-charts";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
-import { ProfileSummaryCard } from "@/components/dashboard/profile-summary-card";
-import { QuickActionsCard } from "@/components/dashboard/quick-actions-card";
-import { RecentActivityCard } from "@/components/dashboard/recent-activity-card";
-import { StatsCards } from "@/components/dashboard/stats-cards";
-import { WelcomeHeader } from "@/components/dashboard/welcome-header";
+import { DepartmentHealth } from "@/components/dashboard/department-health";
+import { ExecutiveHero } from "@/components/dashboard/executive-hero";
+import { LeaderboardSpotlight } from "@/components/dashboard/leaderboard-spotlight";
+import { MissionCritical } from "@/components/dashboard/mission-critical";
+import { PersonalWorkspace } from "@/components/dashboard/personal-workspace";
+import { QuickActionsGrid } from "@/components/dashboard/quick-actions-grid";
 import { ErrorState } from "@/components/feedback/error-state";
 import { FadeIn } from "@/components/feedback/fade-in";
-import { PersonalAnalyticsSection } from "@/features/analytics/components/personal/personal-analytics-section";
 import { useCurrentUser } from "@/features/auth/hooks/use-current-user";
+import { canReview } from "@/lib/permissions";
 
+/**
+ * Milestone 12 — Dashboard Reimagined: an Executive Command Center, not a card grid. Every
+ * section fetches only the real, already-existing endpoints (`/analytics/*`, `/leaderboard`,
+ * `/notifications`, `/kaizens`, `/implementations`) — no backend/API/schema changes. Business
+ * Health and Department Health only render for reviewer roles, since `/analytics/*` is
+ * role-gated server-side; Employees get the same Hero/Mission Critical/Activity/Leaderboard/Quick
+ * Actions/Workspace sections scoped to their own data instead.
+ */
 export function DashboardView() {
   const { data: user, isError, refetch } = useCurrentUser();
 
@@ -25,39 +35,49 @@ export function DashboardView() {
     );
   }
 
-  // Covers both the initial fetch and the brief window before Clerk resolves the session.
   if (!user) {
     return <DashboardSkeleton />;
   }
 
+  const isReviewer = canReview(user.role);
+
   return (
     <div className="flex flex-col gap-8">
       <FadeIn>
-        <WelcomeHeader firstName={user.firstName} />
+        <ExecutiveHero user={user} />
       </FadeIn>
 
       <FadeIn delay={0.05}>
-        <StatsCards gamification={user.gamification} />
+        <MissionCritical user={user} />
       </FadeIn>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      {isReviewer ? (
         <FadeIn delay={0.1}>
-          <ProfileSummaryCard user={user} />
+          <BusinessHealthCharts user={user} />
         </FadeIn>
-        <FadeIn delay={0.15}>
-          <RecentActivityCard />
+      ) : null}
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <FadeIn delay={0.15} className="lg:col-span-2">
+          <ActivityTimeline />
         </FadeIn>
         <FadeIn delay={0.2}>
-          <AnnouncementsCard />
+          <LeaderboardSpotlight />
         </FadeIn>
       </div>
 
-      <FadeIn delay={0.25}>
-        <QuickActionsCard />
-      </FadeIn>
+      {isReviewer ? (
+        <FadeIn delay={0.25}>
+          <DepartmentHealth user={user} />
+        </FadeIn>
+      ) : null}
 
       <FadeIn delay={0.3}>
-        <PersonalAnalyticsSection />
+        <QuickActionsGrid user={user} />
+      </FadeIn>
+
+      <FadeIn delay={0.35}>
+        <PersonalWorkspace user={user} />
       </FadeIn>
     </div>
   );

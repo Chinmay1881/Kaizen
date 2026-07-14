@@ -29,3 +29,12 @@ export function filtersToSearchParams(reportType: string, filters: Record<string
   }
   return params;
 }
+
+/** Same query-param vocabulary as `filtersToSearchParams`, plus `templateId` so the Studio can
+ * look up which saved template these filters came from (for the Actions Panel's Favorite/Pin/
+ * Duplicate/Delete controls) — additive, not a new backend concept, just one more query param. */
+export function templateApplyHref(templateId: string, reportType: string, filters: Record<string, unknown>): string {
+  const params = filtersToSearchParams(reportType, filters);
+  params.set("templateId", templateId);
+  return `/reports?${params.toString()}`;
+}
