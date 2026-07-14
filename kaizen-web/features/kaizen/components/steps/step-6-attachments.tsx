@@ -1,13 +1,15 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { FileText, Upload, X } from "lucide-react";
+import { FileText, Loader2, Upload, X } from "lucide-react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { FieldError } from "@/features/kaizen/components/field-error";
+import { useDeleteKaizenAttachment, useUploadKaizenAttachment } from "@/features/kaizen/hooks/use-kaizen-draft-mutations";
 import type { WizardFormValues } from "@/features/kaizen/schemas/wizard-schema";
+import { ApiError } from "@/lib/api-client";
 
 const MAX_FILES = 10;
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
@@ -17,22 +19,36 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-/**
- * UI only — kaizen-api has no Cloudinary SDK / upload-signing endpoint yet, so nothing here is
- * actually uploaded. Files are held in form state (name/size/type) purely for review-step display
- * and are dropped when the wizard submits. Real upload is a follow-up milestone once
- * `/uploads/sign` and `POST /kaizens/:id/attachments` exist.
- */
-export function Step6Attachments() {
+interface Step6AttachmentsProps {
+  /** Set by the time this step is reachable — the wizard always creates the draft on the first
+   * "Next" click (step 1 -> 2), well before a user can reach step 6. */
+  draftId: string | null;
+}
+
+/** Uploads each file to Cloudinary immediately on selection (`POST /kaizens/:id/attachments`,
+ * multipart), against the draft already created for this wizard session — not deferred to submit
+ * time. Removing a file calls `DELETE /kaizens/:id/attachments/:attachmentId` so an uploaded-then-
+ * removed file doesn't linger as an orphaned Cloudinary asset attached to the Kaizen. */
+export function Step6Attachments({ draftId }: Step6AttachmentsProps) {
   const { control, formState } = useFormContext<WizardFormValues>();
   const { fields, append, remove } = useFieldArray({ control, name: "attachments" });
   const [isDragging, setIsDragging] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  function addFiles(fileList: FileList | null) {
-    if (!fileList) return;
+  const uploadAttachment = useUploadKaizenAttachment();
+  const deleteAttachment = useDeleteKaizenAttachment();
+
+  async function addFiles(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return;
     setLocalError(null);
+
+    if (!draftId) {
+      setLocalError("Still saving your draft — try again in a moment.");
+      return;
+    }
 
     const incoming = Array.from(fileList);
     const oversized = incoming.find((file) => file.size > MAX_FILE_SIZE_BYTES);
@@ -45,13 +61,40 @@ export function Step6Attachments() {
       return;
     }
 
-    for (const file of incoming) {
-      append({
-        id: `${file.name}-${file.size}-${crypto.randomUUID()}`,
-        name: file.name,
-        sizeBytes: file.size,
-        mimeType: file.type || "application/octet-stream",
-      });
+    setIsUploading(true);
+    try {
+      // Sequential, not parallel — the server enforces the same MAX_FILES cap per request, so
+      // firing all uploads at once risks several requests racing past it at the same count.
+      for (const file of incoming) {
+        try {
+          const attachment = await uploadAttachment.mutateAsync({ id: draftId, file });
+          append({
+            id: attachment.id,
+            fileName: attachment.fileName,
+            fileSizeBytes: attachment.fileSizeBytes,
+            mimeType: attachment.mimeType,
+            cloudinarySecureUrl: attachment.cloudinarySecureUrl,
+          });
+        } catch (error) {
+          setLocalError(error instanceof ApiError ? error.message : `Could not upload "${file.name}".`);
+          break;
+        }
+      }
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function handleRemove(index: number, attachmentId: string) {
+    if (!draftId) return;
+    setRemovingId(attachmentId);
+    try {
+      await deleteAttachment.mutateAsync({ id: draftId, attachmentId });
+      remove(index);
+    } catch (error) {
+      setLocalError(error instanceof ApiError ? error.message : "Could not remove this file.");
+    } finally {
+      setRemovingId(null);
     }
   }
 
@@ -59,41 +102,47 @@ export function Step6Attachments() {
     <div className="flex flex-col gap-4">
       <p className="text-muted-foreground text-sm">
         Attach supporting images, videos, PDFs, or documents. Up to {MAX_FILES} files, 25 MB each.
-        Files are attached to this draft locally — actual upload is coming soon.
       </p>
 
       <div
         role="button"
-        tabIndex={0}
-        onClick={() => inputRef.current?.click()}
+        tabIndex={isUploading ? -1 : 0}
+        aria-disabled={isUploading}
+        onClick={() => !isUploading && inputRef.current?.click()}
         onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") inputRef.current?.click();
+          if (!isUploading && (event.key === "Enter" || event.key === " ")) inputRef.current?.click();
         }}
         onDragOver={(event) => {
           event.preventDefault();
-          setIsDragging(true);
+          if (!isUploading) setIsDragging(true);
         }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={(event) => {
           event.preventDefault();
           setIsDragging(false);
-          addFiles(event.dataTransfer.files);
+          if (!isUploading) void addFiles(event.dataTransfer.files);
         }}
-        className={`flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-dashed p-10 text-center transition-colors ${
-          isDragging ? "border-primary bg-primary/5" : "border-border"
-        }`}
+        className={`flex flex-col items-center gap-2 rounded-2xl border-2 border-dashed p-10 text-center transition-colors ${
+          isUploading ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+        } ${isDragging ? "border-primary bg-primary/5" : "border-border"}`}
       >
-        <Upload className="text-muted-foreground h-6 w-6" />
-        <p className="text-sm font-medium">Drag & drop files here, or click to browse</p>
-        <p className="text-muted-foreground text-xs">
-          Images, videos, PDF, Word, Excel, PowerPoint
-        </p>
+        {isUploading ? (
+          <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+        ) : (
+          <Upload className="text-muted-foreground h-6 w-6" />
+        )}
+        <p className="text-sm font-medium">{isUploading ? "Uploading…" : "Drag & drop files here, or click to browse"}</p>
+        <p className="text-muted-foreground text-xs">Images, videos, PDF, Word, Excel, PowerPoint</p>
         <input
           ref={inputRef}
           type="file"
           multiple
+          disabled={isUploading}
           className="hidden"
-          onChange={(event) => addFiles(event.target.files)}
+          onChange={(event) => {
+            void addFiles(event.target.files);
+            event.target.value = "";
+          }}
         />
       </div>
 
@@ -101,26 +150,36 @@ export function Step6Attachments() {
 
       {fields.length > 0 ? (
         <div className="flex flex-col gap-2">
-          {fields.map((field, index) => (
-            <Card key={field.id}>
-              <CardContent className="flex items-center gap-3 p-3">
-                <FileText className="text-muted-foreground h-5 w-5 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{field.name}</p>
-                  <p className="text-muted-foreground text-xs">{formatFileSize(field.sizeBytes)}</p>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Remove ${field.name}`}
-                  onClick={() => remove(index)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+          {fields.map((field, index) => {
+            const isImage = field.mimeType.startsWith("image/");
+            const isRemoving = removingId === field.id;
+            return (
+              <Card key={field.id}>
+                <CardContent className="flex items-center gap-3 p-3">
+                  {isImage ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- attachments come from Cloudinary, an arbitrary external host
+                    <img src={field.cloudinarySecureUrl} alt={field.fileName} className="h-10 w-10 shrink-0 rounded-md object-cover" />
+                  ) : (
+                    <FileText className="text-muted-foreground h-5 w-5 shrink-0" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{field.fileName}</p>
+                    <p className="text-muted-foreground text-xs">{formatFileSize(field.fileSizeBytes)}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Remove ${field.fileName}`}
+                    disabled={isRemoving}
+                    onClick={() => void handleRemove(index, field.id)}
+                  >
+                    {isRemoving ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       ) : null}
     </div>

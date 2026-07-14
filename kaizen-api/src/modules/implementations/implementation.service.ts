@@ -439,20 +439,23 @@ class ImplementationService {
     return implementation;
   }
 
-  /** Assign is scoped to "Department Manager, same department" — matching ReviewService's
-   * `assertCanManage` exactly (the department that submitted/reviewed the Kaizen, not the
-   * department the work is eventually assigned to). */
+  /** Assign is scoped to "Department Manager, same department" (the department that
+   * submitted/reviewed the Kaizen, not the department the work is eventually assigned to), plus
+   * CMD/Super Admin as enterprise-wide overrides — matching ReviewService's `assertCanManage`
+   * exactly. Deliberately narrower than this file's own `COMPANY_WIDE_ROLES` (which includes HR,
+   * appropriate for viewing/verifying but not for assigning — same review-action RBAC as
+   * ReviewService/ScoringService). Milestone 20 — restores the CMD/Super Admin override that
+   * Milestone 13 regressed. */
   private assertCanManage(kaizen: { department: { id: string } }, requester: Requester): void {
-    if (
-      requester.role !== "DEPARTMENT_MANAGER" ||
-      requester.departmentId !== kaizen.department.id
-    ) {
-      throw new ApiError(
-        "FORBIDDEN",
-        "Only the department manager for this Kaizen can assign its implementation.",
-        403,
-      );
+    if (requester.role === "SUPER_ADMIN" || requester.role === "CMD") return;
+    if (requester.role === "DEPARTMENT_MANAGER" && requester.departmentId === kaizen.department.id) {
+      return;
     }
+    throw new ApiError(
+      "FORBIDDEN",
+      "Only the department manager for this Kaizen — or CMD/Super Admin — can assign its implementation.",
+      403,
+    );
   }
 
   /** Update progress / complete / register attachment: "Department Manager or assigned owner" —

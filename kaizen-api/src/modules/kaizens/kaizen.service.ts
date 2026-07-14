@@ -1,6 +1,8 @@
 import type { Prisma } from "@prisma/client";
 
+import { env } from "../../config/env.js";
 import { eventBus } from "../../events/event-bus.js";
+import { deleteAttachment, uploadAttachment } from "../../lib/cloudinary-client.js";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
 import { formatKaizenNumber } from "../../utils/kaizen-number.js";
@@ -8,6 +10,7 @@ import { buildPaginationMeta, getSkipTake } from "../../utils/pagination.js";
 import {
   KAIZEN_DETAIL_INCLUDE,
   KAIZEN_LIST_SELECT,
+  toAttachmentItem,
   toDetail,
   toListItem,
 } from "./kaizen.mapper.js";
@@ -17,6 +20,7 @@ import type {
   UpdateKaizenSchema,
 } from "./kaizen.schema.js";
 import type {
+  KaizenAttachmentItem,
   KaizenDetail,
   PaginatedKaizens,
   SubmitKaizenResult,
@@ -24,6 +28,34 @@ import type {
 } from "./kaizen.types.js";
 import type { UserRole } from "../../constants/roles.js";
 import { KAIZEN_STATUSES, type KaizenStatus } from "../../constants/kaizen-status.js";
+import type { AttachmentType } from "@prisma/client";
+
+interface UploadedFile {
+  buffer: Buffer;
+  originalname: string;
+  mimetype: string;
+  size: number;
+}
+
+/** Classifies a raw MIME type into the schema's `AttachmentType` enum — the server must do this
+ * itself (unlike the Implementation "register already-uploaded evidence" endpoint, where the
+ * caller supplies `fileType` directly) because this endpoint receives the real file, not a
+ * pre-classified description of one. */
+function classifyMimeType(mimeType: string): AttachmentType {
+  if (mimeType.startsWith("image/")) return "IMAGE";
+  if (mimeType.startsWith("video/")) return "VIDEO";
+  if (mimeType === "application/pdf") return "PDF";
+  if (mimeType.includes("spreadsheet") || mimeType.includes("excel")) return "SPREADSHEET";
+  if (mimeType.includes("presentation") || mimeType.includes("powerpoint")) return "PRESENTATION";
+  if (mimeType.includes("word") || mimeType.includes("document")) return "DOCUMENT";
+  return "OTHER";
+}
+
+function cloudinaryResourceType(fileType: AttachmentType): "image" | "video" | "raw" {
+  if (fileType === "IMAGE") return "image";
+  if (fileType === "VIDEO") return "video";
+  return "raw";
+}
 
 interface Requester {
   id: string;
@@ -258,6 +290,76 @@ class KaizenService {
     }
 
     await prisma.kaizen.delete({ where: { id: kaizenId } });
+  }
+
+  /** POST /kaizens/:id/attachments — multipart upload handled by `middleware/upload.ts`
+   * (`req.file`, memory storage) one level up in the route; this uploads the buffer to Cloudinary
+   * and creates the `KaizenAttachment` row in one step, rather than the two-step "sign, then
+   * register" pattern `implementationService.registerAttachment` uses — there's no separate
+   * client-side Cloudinary widget in this app, so a single server round trip is simpler and can't
+   * leave an orphaned Cloudinary asset with no DB row if the client never calls a second step. */
+  async addAttachment(
+    kaizenId: string,
+    requester: Requester,
+    file: UploadedFile,
+  ): Promise<KaizenAttachmentItem> {
+    const existing = await prisma.kaizen.findUnique({
+      where: { id: kaizenId },
+      select: { submitterId: true, status: true, _count: { select: { attachments: true } } },
+    });
+    assertFound(existing);
+    this.assertCanEdit(existing, requester);
+
+    if (existing._count.attachments >= env.MAX_FILES_PER_KAIZEN) {
+      throw new ApiError(
+        "VALIDATION_ERROR",
+        `A Kaizen can have at most ${env.MAX_FILES_PER_KAIZEN} attachments.`,
+        400,
+      );
+    }
+
+    const fileType = classifyMimeType(file.mimetype);
+    const uploaded = await uploadAttachment(file.buffer, {
+      folder: `kaizens/${kaizenId}`,
+      publicId: `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9_.-]/g, "_")}`,
+    });
+
+    const attachment = await prisma.kaizenAttachment.create({
+      data: {
+        kaizenId,
+        fileName: file.originalname,
+        fileType,
+        mimeType: file.mimetype,
+        fileSizeBytes: BigInt(file.size),
+        cloudinaryPublicId: uploaded.publicId,
+        cloudinaryUrl: uploaded.url,
+        cloudinarySecureUrl: uploaded.secureUrl,
+        uploadedById: requester.id,
+      },
+      include: { uploadedBy: { select: { id: true, displayName: true } } },
+    });
+
+    return toAttachmentItem(attachment);
+  }
+
+  /** DELETE /kaizens/:id/attachments/:attachmentId — so the Wizard's "remove" control (and any
+   * future edit flow) can actually undo an upload instead of just hiding it client-side while the
+   * Cloudinary asset and DB row linger forever. */
+  async removeAttachment(kaizenId: string, attachmentId: string, requester: Requester): Promise<void> {
+    const existing = await prisma.kaizen.findUnique({
+      where: { id: kaizenId },
+      select: { submitterId: true, status: true },
+    });
+    assertFound(existing);
+    this.assertCanEdit(existing, requester);
+
+    const attachment = await prisma.kaizenAttachment.findUnique({ where: { id: attachmentId } });
+    if (!attachment || attachment.kaizenId !== kaizenId) {
+      throw new ApiError("NOT_FOUND", "Attachment not found.", 404);
+    }
+
+    await prisma.kaizenAttachment.delete({ where: { id: attachmentId } });
+    await deleteAttachment(attachment.cloudinaryPublicId, cloudinaryResourceType(attachment.fileType));
   }
 
   /** POST /kaizens/:id/submit — validates the wizard's required fields per the API spec, then

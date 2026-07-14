@@ -2,6 +2,7 @@ import { apiClient } from "@/lib/api-client";
 import type { ApiSuccessResponse } from "@/types/api";
 import type {
   CreateKaizenInput,
+  KaizenAttachment,
   KaizenDetail,
   KaizenListItem,
   ListKaizensParams,
@@ -98,5 +99,30 @@ export const kaizenService = {
       { token: token ?? undefined },
     );
     return response.data;
+  },
+
+  uploadAttachment: async (
+    token: string | null,
+    id: string,
+    file: File,
+  ): Promise<KaizenAttachment> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await apiClient<ApiSuccessResponse<KaizenAttachment>>(
+      `/kaizens/${id}/attachments`,
+      { method: "POST", token: token ?? undefined, body: formData },
+    );
+    return response.data;
+  },
+
+  deleteAttachment: async (
+    token: string | null,
+    id: string,
+    attachmentId: string,
+  ): Promise<void> => {
+    await apiClient<undefined>(`/kaizens/${id}/attachments/${attachmentId}`, {
+      method: "DELETE",
+      token: token ?? undefined,
+    });
   },
 };

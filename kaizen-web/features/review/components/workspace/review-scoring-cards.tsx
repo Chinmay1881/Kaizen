@@ -18,6 +18,7 @@ import type { CurrentUser } from "@/features/auth/types/user";
 import type { KaizenDetail } from "@/features/kaizen/types/kaizen";
 import { useCountUp } from "@/hooks/use-count-up";
 import { ApiError } from "@/lib/api-client";
+import { canManageKaizenReview } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/utils/format";
 
@@ -54,11 +55,11 @@ interface ReviewScoringCardsProps {
 
 /**
  * Review-exclusive rebuild of `features/scoring/components/evaluation-panel.tsx` (now deleted —
- * nothing else imported it). Same hooks, same gating (Department Manager, same department,
- * UNDER_REVIEW only — SCORE-001's per-endpoint Auth line, matching `ReviewActionPanel`'s existing
- * precedent), same `UpsertEvaluationInput`/submit calls. Presentation only: one card per
- * criterion with a colored progress indicator, a live running total, and an advisory
- * recommendation hint.
+ * nothing else imported it). Same hooks, same `UpsertEvaluationInput`/submit calls. Presentation
+ * only: one card per criterion with a colored progress indicator, a live running total, and an
+ * advisory recommendation hint. Gating (UNDER_REVIEW only, plus `canManageKaizenReview` — the
+ * Kaizen's own Department Manager, or CMD/Super Admin unconditionally) matches the backend's
+ * `ScoringService.assertCanManage` exactly (Milestone 20).
  */
 export function ReviewScoringCards({ kaizen, currentUser }: ReviewScoringCardsProps) {
   const kaizenId = kaizen.id;
@@ -88,9 +89,9 @@ export function ReviewScoringCards({ kaizen, currentUser }: ReviewScoringCardsPr
   const totalScoreForCountUp = Object.values(scores).reduce((sum, score) => sum + score, 0);
   const animatedTotal = useCountUp(totalScoreForCountUp, 400);
 
-  const isDeptManagerHere = currentUser?.role === "DEPARTMENT_MANAGER" && currentUser.department?.id === kaizen.department.id;
+  const canEvaluate = currentUser ? canManageKaizenReview(currentUser, kaizen) : false;
 
-  if (!isDeptManagerHere || kaizen.status !== "UNDER_REVIEW") {
+  if (!canEvaluate || kaizen.status !== "UNDER_REVIEW") {
     return null;
   }
 

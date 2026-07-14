@@ -55,6 +55,18 @@ export interface KaizenListItem {
   updatedAt: string;
 }
 
+export interface KaizenAttachmentItem {
+  id: string;
+  fileName: string;
+  fileType: string;
+  mimeType: string;
+  fileSizeBytes: number;
+  cloudinaryPublicId: string;
+  cloudinarySecureUrl: string;
+  uploadedBy: { id: string; displayName: string };
+  createdAt: string;
+}
+
 export interface KaizenDetail extends KaizenListItem {
   location: string | null;
   problemStatement: string | null;
@@ -63,8 +75,7 @@ export interface KaizenDetail extends KaizenListItem {
   fiveW1H: FiveW1HInput | null;
   fiveWhy: FiveWhyInput[];
   benefits: (BenefitInput & { id: string })[];
-  /** Real attachment records don't exist yet — Cloudinary upload isn't wired up. Always []. */
-  attachments: [];
+  attachments: KaizenAttachmentItem[];
 }
 
 export interface SubmitKaizenResult {

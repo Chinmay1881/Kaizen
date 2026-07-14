@@ -1,4 +1,4 @@
-import type { KaizenDetail, KaizenListItem } from "./kaizen.types.js";
+import type { KaizenAttachmentItem, KaizenDetail, KaizenListItem } from "./kaizen.types.js";
 
 const KAIZEN_LIST_SELECT = {
   id: true,
@@ -54,7 +54,23 @@ const KAIZEN_DETAIL_INCLUDE = {
   fiveW1H: true,
   fiveWhys: { orderBy: { level: "asc" as const } },
   benefits: { orderBy: { sortOrder: "asc" as const } },
+  attachments: {
+    orderBy: { createdAt: "asc" as const },
+    include: { uploadedBy: { select: { id: true, displayName: true } } },
+  },
 } as const;
+
+type KaizenAttachmentRow = {
+  id: string;
+  fileName: string;
+  fileType: string;
+  mimeType: string;
+  fileSizeBytes: bigint;
+  cloudinaryPublicId: string;
+  cloudinarySecureUrl: string;
+  uploadedBy: { id: string; displayName: string };
+  createdAt: Date;
+};
 
 type KaizenWithRelations = {
   id: string;
@@ -83,7 +99,22 @@ type KaizenWithRelations = {
   } | null;
   fiveWhys: { level: number; answer: string }[];
   benefits: { id: string; benefitType: string; description: string; isCustom: boolean }[];
+  attachments: KaizenAttachmentRow[];
 };
+
+function toAttachmentItem(attachment: KaizenAttachmentRow): KaizenAttachmentItem {
+  return {
+    id: attachment.id,
+    fileName: attachment.fileName,
+    fileType: attachment.fileType,
+    mimeType: attachment.mimeType,
+    fileSizeBytes: Number(attachment.fileSizeBytes),
+    cloudinaryPublicId: attachment.cloudinaryPublicId,
+    cloudinarySecureUrl: attachment.cloudinarySecureUrl,
+    uploadedBy: attachment.uploadedBy,
+    createdAt: attachment.createdAt.toISOString(),
+  };
+}
 
 function toDetail(kaizen: KaizenWithRelations): KaizenDetail {
   return {
@@ -120,8 +151,8 @@ function toDetail(kaizen: KaizenWithRelations): KaizenDetail {
       description: entry.description,
       isCustom: entry.isCustom,
     })),
-    attachments: [],
+    attachments: kaizen.attachments.map(toAttachmentItem),
   };
 }
 
-export { KAIZEN_DETAIL_INCLUDE, KAIZEN_LIST_SELECT, toDetail, toListItem };
+export { KAIZEN_DETAIL_INCLUDE, KAIZEN_LIST_SELECT, toAttachmentItem, toDetail, toListItem };

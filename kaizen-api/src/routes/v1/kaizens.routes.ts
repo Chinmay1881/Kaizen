@@ -9,6 +9,7 @@ import {
   type ListKaizensQuerySchema,
 } from "../../modules/kaizens/kaizen.schema.js";
 import { kaizenService } from "../../modules/kaizens/kaizen.service.js";
+import { uploadSingleFile } from "../../middleware/upload.js";
 import { recordBusinessImpactSchema } from "../../modules/business-impact/business-impact.schema.js";
 import { businessImpactService } from "../../modules/business-impact/business-impact.service.js";
 import {
@@ -103,6 +104,35 @@ kaizensRouter.delete("/:id", async (req, res, next) => {
   try {
     const requester = requireUser(req);
     await kaizenService.remove(requireParam(req, "id"), requester);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+kaizensRouter.post("/:id/attachments", uploadSingleFile("file"), async (req, res, next) => {
+  try {
+    const requester = requireUser(req);
+    if (!req.file) {
+      throw new ApiError("VALIDATION_ERROR", "No file was uploaded.", 400, [
+        { field: "file", message: "A file is required." },
+      ]);
+    }
+    const attachment = await kaizenService.addAttachment(requireParam(req, "id"), requester, req.file);
+    sendSuccess(res, attachment, 201);
+  } catch (error) {
+    next(error);
+  }
+});
+
+kaizensRouter.delete("/:id/attachments/:attachmentId", async (req, res, next) => {
+  try {
+    const requester = requireUser(req);
+    await kaizenService.removeAttachment(
+      requireParam(req, "id"),
+      requireParam(req, "attachmentId"),
+      requester,
+    );
     res.status(204).end();
   } catch (error) {
     next(error);

@@ -222,7 +222,7 @@ export function KaizenWizard() {
                 {currentStep === 3 ? <Step3FiveWhy /> : null}
                 {currentStep === 4 ? <Step4FiveW1H /> : null}
                 {currentStep === 5 ? <Step5Benefits /> : null}
-                {currentStep === 6 ? <Step6Attachments /> : null}
+                {currentStep === 6 ? <Step6Attachments draftId={draftId} /> : null}
                 {currentStep === 7 ? <Step7Review onEditStep={handleGoToStep} /> : null}
               </CardContent>
             </Card>

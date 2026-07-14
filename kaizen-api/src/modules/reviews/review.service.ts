@@ -314,20 +314,23 @@ class ReviewService {
     return toCommentItem(updated);
   }
 
-  /** Review actions (start/approve/reject/needs-changes/resolve) are, per the API spec, scoped
-   * to "Department Manager (same department)" — not the broader reviewer set that can merely
-   * view or comment. */
+  /** Review actions (start/approve/reject/needs-changes/resolve) are scoped to "Department
+   * Manager (same department)", with CMD and Super Admin as enterprise-wide overrides that can
+   * act on any Kaizen regardless of department — not the broader reviewer set that can merely
+   * view or comment (HR included there is deliberately excluded here; HR can view/comment but
+   * cannot take review actions). Milestone 20 — restores this after the Milestone 13 Review
+   * Workspace rebuild regressed it to Department-Manager-only, silently locking out CMD/Super
+   * Admin. */
   private assertCanManage(kaizen: { department: { id: string } }, requester: Requester): void {
-    if (
-      requester.role !== "DEPARTMENT_MANAGER" ||
-      requester.departmentId !== kaizen.department.id
-    ) {
-      throw new ApiError(
-        "FORBIDDEN",
-        "Only the department manager for this Kaizen can perform review actions.",
-        403,
-      );
+    if (requester.role === "SUPER_ADMIN" || requester.role === "CMD") return;
+    if (requester.role === "DEPARTMENT_MANAGER" && requester.departmentId === kaizen.department.id) {
+      return;
     }
+    throw new ApiError(
+      "FORBIDDEN",
+      "Only the department manager for this Kaizen — or CMD/Super Admin — can perform review actions.",
+      403,
+    );
   }
 
   /** Precondition on Approve/Reject per docs/engineering/02_API_SPECIFICATION.md: "Evaluation

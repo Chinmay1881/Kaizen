@@ -1,11 +1,12 @@
 "use client";
 
-import { Paperclip, Star } from "lucide-react";
+import { Star } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { useCurrentUser } from "@/features/auth/hooks/use-current-user";
+import { AttachmentGallery } from "@/features/kaizen/components/attachment-gallery";
 import { KaizenStatusBadge } from "@/features/kaizen/components/kaizen-status-badge";
 import { PRESET_BENEFIT_TYPES } from "@/features/kaizen/constants/benefit-types";
 import { useKaizenDetail } from "@/features/kaizen/hooks/use-kaizen-detail";
@@ -160,10 +161,7 @@ export function KaizenCaseStudy({ id }: KaizenCaseStudyProps) {
       </DocumentSection>
 
       <DocumentSection eyebrow="Attachments">
-        <p className="text-muted-foreground flex items-center gap-1.5 text-sm">
-          <Paperclip className="h-3.5 w-3.5" />
-          {kaizen.attachments.length > 0 ? `${kaizen.attachments.length} file(s) attached.` : "No attachments."}
-        </p>
+        <AttachmentGallery attachments={kaizen.attachments} />
       </DocumentSection>
 
       {scoreQuery.data && scoreQuery.data.evaluations.length > 0 ? (

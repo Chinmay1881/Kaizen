@@ -268,20 +268,21 @@ class ScoringService {
     };
   }
 
-  /** Matches ReviewService's `assertCanManage` exactly (Department Manager, same department) —
-   * duplicated rather than shared since each service already owns its own small authorization
-   * predicates (see kaizen.service.ts/review.service.ts) and this is a one-line check. */
+  /** Matches ReviewService's `assertCanManage` exactly (Department Manager same department, plus
+   * CMD/Super Admin as enterprise-wide overrides — HR excluded) — duplicated rather than shared
+   * since each service already owns its own small authorization predicates (see
+   * kaizen.service.ts/review.service.ts) and this is a one-line check. Milestone 20 — restores
+   * the CMD/Super Admin override that Milestone 13 regressed. */
   private assertCanManage(kaizen: { department: { id: string } }, requester: Requester): void {
-    if (
-      requester.role !== "DEPARTMENT_MANAGER" ||
-      requester.departmentId !== kaizen.department.id
-    ) {
-      throw new ApiError(
-        "FORBIDDEN",
-        "Only the department manager for this Kaizen can evaluate it.",
-        403,
-      );
+    if (requester.role === "SUPER_ADMIN" || requester.role === "CMD") return;
+    if (requester.role === "DEPARTMENT_MANAGER" && requester.departmentId === kaizen.department.id) {
+      return;
     }
+    throw new ApiError(
+      "FORBIDDEN",
+      "Only the department manager for this Kaizen — or CMD/Super Admin — can evaluate it.",
+      403,
+    );
   }
 }
 

@@ -70,14 +70,18 @@ export const wizardSchema = z.object({
   businessImpact: z.string().trim().max(500, "Must be at most 500 characters.").optional(),
   estimatedSavings: z.string().trim().max(500, "Must be at most 500 characters.").optional(),
 
-  // Step 6 — Attachments (client-side only; nothing is uploaded this milestone)
+  // Step 6 — Attachments. Each entry is a real, already-uploaded `KaizenAttachment` (uploaded
+  // immediately on selection — see step-6-attachments.tsx) rather than pre-upload local metadata,
+  // so a resumed draft (autosave writes this to localStorage) reflects what's actually on the
+  // server instead of files that were never really attached.
   attachments: z
     .array(
       z.object({
         id: z.string(),
-        name: z.string(),
-        sizeBytes: z.number(),
+        fileName: z.string(),
+        fileSizeBytes: z.number(),
         mimeType: z.string(),
+        cloudinarySecureUrl: z.string(),
       }),
     )
     .max(10, "Maximum 10 files."),

@@ -8,6 +8,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import type { CurrentUser } from "@/features/auth/types/user";
 import type { KaizenDetail } from "@/features/kaizen/types/kaizen";
+import { AttachmentGallery } from "@/features/kaizen/components/attachment-gallery";
 import { useKaizenTimeline } from "@/features/kaizen/hooks/use-kaizen-timeline";
 import { PRESET_BENEFIT_TYPES } from "@/features/kaizen/constants/benefit-types";
 import { useBusinessImpact } from "@/features/implementation/hooks/use-business-impact";
@@ -69,6 +70,7 @@ export const ImplementationDocument = forwardRef<ImplementationDocumentHandle, I
             </Link>
           </div>
           <p className="text-muted-foreground text-sm whitespace-pre-wrap">{kaizen.problemStatement || "No problem statement recorded."}</p>
+          {kaizen.attachments.length > 0 ? <AttachmentGallery attachments={kaizen.attachments} /> : null}
         </div>
       </DocumentSection>
 

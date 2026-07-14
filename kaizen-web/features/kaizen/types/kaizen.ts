@@ -26,6 +26,18 @@ export interface BenefitWithId extends Benefit {
   id: string;
 }
 
+export interface KaizenAttachment {
+  id: string;
+  fileName: string;
+  fileType: string;
+  mimeType: string;
+  fileSizeBytes: number;
+  cloudinaryPublicId: string;
+  cloudinarySecureUrl: string;
+  uploadedBy: { id: string; displayName: string };
+  createdAt: string;
+}
+
 export interface KaizenDetail {
   id: string;
   kaizenNumber: string;
@@ -46,7 +58,7 @@ export interface KaizenDetail {
   fiveW1H: FiveW1H | null;
   fiveWhy: FiveWhyEntry[];
   benefits: BenefitWithId[];
-  attachments: [];
+  attachments: KaizenAttachment[];
 }
 
 export interface CreateKaizenInput {

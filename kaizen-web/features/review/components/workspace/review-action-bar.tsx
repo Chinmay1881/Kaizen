@@ -16,6 +16,7 @@ import { exportKaizenAsJson } from "@/features/review/utils/export-kaizen";
 import { useEvaluation } from "@/features/scoring/hooks/use-evaluation";
 import { ApiError } from "@/lib/api-client";
 import { fadeInUpVariants } from "@/lib/motion";
+import { canManageKaizenReview } from "@/lib/permissions";
 
 type ActiveDialog = "approve" | "reject" | "requestChanges" | null;
 
@@ -74,8 +75,13 @@ export const ReviewActionBar = forwardRef<ReviewActionBarHandle, ReviewActionBar
     return () => window.clearTimeout(timer);
   }, [flashSuccess]);
 
+  // Who can even see this panel at all (HR included — read-only, per the RBAC table) vs. who can
+  // actually take review actions on THIS Kaizen (HR excluded; CMD/Super Admin unconditionally;
+  // Department Manager only within their own department) are two different questions — see
+  // `canManageKaizenReview`'s doc comment.
   const isCompanyWideReviewer = ["HR", "CMD", "SUPER_ADMIN"].includes(currentUser.role);
   const isDeptManagerHere = currentUser.role === "DEPARTMENT_MANAGER" && currentUser.department?.id === kaizen.department.id;
+  const canTakeAction = canManageKaizenReview(currentUser, kaizen);
 
   const evaluation = evaluationQuery.data;
   const canApprove = Boolean(evaluation?.isSubmitted && evaluation.recommendation === "APPROVE");
@@ -83,10 +89,10 @@ export const ReviewActionBar = forwardRef<ReviewActionBarHandle, ReviewActionBar
 
   useImperativeHandle(ref, () => ({
     openApprove: () => {
-      if (isDeptManagerHere && kaizen.status === "UNDER_REVIEW" && canApprove) setActiveDialog("approve");
+      if (canTakeAction && kaizen.status === "UNDER_REVIEW" && canApprove) setActiveDialog("approve");
     },
     openReject: () => {
-      if (isDeptManagerHere && kaizen.status === "UNDER_REVIEW" && canReject) setActiveDialog("reject");
+      if (canTakeAction && kaizen.status === "UNDER_REVIEW" && canReject) setActiveDialog("reject");
     },
   }));
 
@@ -150,8 +156,8 @@ export const ReviewActionBar = forwardRef<ReviewActionBarHandle, ReviewActionBar
   return (
     <>
       <div className="flex flex-col gap-2 border-t p-4">
-        {!isDeptManagerHere ? (
-          <p className="text-muted-foreground text-xs">Only {kaizen.department.name}&apos;s manager can take review actions on this Kaizen.</p>
+        {!canTakeAction ? (
+          <p className="text-muted-foreground text-xs">Only {kaizen.department.name}&apos;s manager, CMD, or a Super Admin can take review actions on this Kaizen.</p>
         ) : kaizen.status === "SUBMITTED" ? (
           <Button
             className="w-full"

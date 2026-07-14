@@ -1,9 +1,9 @@
 "use client";
 
 import { forwardRef } from "react";
-import { Paperclip } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { AttachmentGallery } from "@/features/kaizen/components/attachment-gallery";
 import { KaizenStatusBadge } from "@/features/kaizen/components/kaizen-status-badge";
 import { PRESET_BENEFIT_TYPES } from "@/features/kaizen/constants/benefit-types";
 import type { CurrentUser } from "@/features/auth/types/user";
@@ -128,10 +128,7 @@ export const ReviewDocument = forwardRef<ReviewDocumentHandle, ReviewDocumentPro
       </DocumentSection>
 
       <DocumentSection eyebrow="Attachments">
-        <p className="text-muted-foreground flex items-center gap-1.5 text-sm">
-          <Paperclip className="h-3.5 w-3.5" />
-          {kaizen.attachments.length > 0 ? `${kaizen.attachments.length} file(s) attached.` : "No attachments."}
-        </p>
+        <AttachmentGallery attachments={kaizen.attachments} />
       </DocumentSection>
 
       <DocumentSection eyebrow="Evaluation">
