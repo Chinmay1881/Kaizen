@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
 
-import { DashboardView } from "@/components/dashboard/dashboard-view";
+import { DashboardViewV2 } from "@/components/dashboard-v2/dashboard-view-v2";
 
 export const metadata: Metadata = {
   title: "Dashboard",
 };
 
 export default function DashboardPage() {
-  return (
-    <div className="mx-auto w-full max-w-[1440px]">
-      <DashboardView />
-    </div>
-  );
+  return <DashboardViewV2 />;
 }
