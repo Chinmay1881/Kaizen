@@ -11,9 +11,14 @@ import { toast } from "@/components/feedback/success-toast";
 import type { CurrentUser } from "@/features/auth/types/user";
 import type { KaizenDetail } from "@/features/kaizen/types/kaizen";
 import { useKaizenTimeline } from "@/features/kaizen/hooks/use-kaizen-timeline";
+import { useBusinessImpact } from "@/features/implementation/hooks/use-business-impact";
+import { useImplementation } from "@/features/implementation/hooks/use-implementation";
 import { useApproveKaizen, useRejectKaizen, useRequestChanges, useStartReview } from "@/features/review/hooks/use-review-actions";
+import { useReviewComments } from "@/features/review/hooks/use-review-comments";
 import { exportKaizenAsJson } from "@/features/review/utils/export-kaizen";
+import { downloadKaizenReportPdf } from "@/features/review/utils/generate-kaizen-report-pdf";
 import { useEvaluation } from "@/features/scoring/hooks/use-evaluation";
+import { useKaizenScore } from "@/features/scoring/hooks/use-kaizen-score";
 import { ApiError } from "@/lib/api-client";
 import { fadeInUpVariants } from "@/lib/motion";
 import { canManageKaizenReview } from "@/lib/permissions";
@@ -64,10 +69,18 @@ export const ReviewActionBar = forwardRef<ReviewActionBarHandle, ReviewActionBar
   const requestChanges = useRequestChanges();
   const evaluationQuery = useEvaluation(kaizen.id);
   const timelineQuery = useKaizenTimeline(kaizen.id);
+  // Fetched here (rather than only where each is already displayed on-screen) because the PDF
+  // report needs the full picture in one place: every reviewer's score (not just the current
+  // user's own evaluation), every comment, and implementation/business-impact once they exist.
+  const scoreQuery = useKaizenScore(kaizen.id);
+  const commentsQuery = useReviewComments(kaizen.id);
+  const implementationQuery = useImplementation(kaizen.id);
+  const businessImpactQuery = useBusinessImpact(kaizen.id);
 
   const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null);
   const [notes, setNotes] = useState("");
   const [flashSuccess, setFlashSuccess] = useState<string | null>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   useEffect(() => {
     if (!flashSuccess) return;
@@ -143,8 +156,22 @@ export const ReviewActionBar = forwardRef<ReviewActionBarHandle, ReviewActionBar
 
   const isPending = approve.isPending || reject.isPending || requestChanges.isPending;
 
-  function handlePrint() {
-    window.print();
+  async function handlePrint() {
+    setIsGeneratingPdf(true);
+    try {
+      await downloadKaizenReportPdf({
+        kaizen,
+        score: scoreQuery.data ?? null,
+        timeline: timelineQuery.data ?? [],
+        comments: commentsQuery.data ?? [],
+        implementation: implementationQuery.data ?? null,
+        businessImpact: businessImpactQuery.data ?? null,
+      });
+    } catch {
+      toast.error("Could not generate the PDF report.");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   }
 
   function handleExport() {
@@ -188,9 +215,9 @@ export const ReviewActionBar = forwardRef<ReviewActionBarHandle, ReviewActionBar
         )}
 
         <div className="grid grid-cols-2 gap-2">
-          <Button variant="ghost" size="sm" onClick={handlePrint}>
-            <Printer className="h-3.5 w-3.5" />
-            Print
+          <Button variant="ghost" size="sm" onClick={() => void handlePrint()} disabled={isGeneratingPdf}>
+            {isGeneratingPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Printer className="h-3.5 w-3.5" />}
+            {isGeneratingPdf ? "Generating…" : "Print"}
           </Button>
           <Button variant="ghost" size="sm" onClick={handleExport}>
             <Download className="h-3.5 w-3.5" />

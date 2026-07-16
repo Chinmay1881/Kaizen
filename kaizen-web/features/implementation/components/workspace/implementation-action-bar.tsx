@@ -16,6 +16,9 @@ import type { BusinessImpact, Implementation } from "@/features/implementation/t
 import { useRecordBusinessImpact } from "@/features/implementation/hooks/use-business-impact";
 import { useCompleteImplementation, useUpdateImplementationProgress, useVerifyImplementation } from "@/features/implementation/hooks/use-implementation-mutations";
 import { exportImplementationAsJson } from "@/features/implementation/utils/export-implementation";
+import { useReviewComments } from "@/features/review/hooks/use-review-comments";
+import { downloadKaizenReportPdf } from "@/features/review/utils/generate-kaizen-report-pdf";
+import { useKaizenScore } from "@/features/scoring/hooks/use-kaizen-score";
 import { ApiError } from "@/lib/api-client";
 
 type ActiveDialog = "progress" | "complete" | "verify" | "impact" | null;
@@ -59,8 +62,11 @@ export function ImplementationActionBar({ kaizen, implementation, currentUser, b
   const verify = useVerifyImplementation(kaizen.id);
   const recordImpact = useRecordBusinessImpact(kaizen.id);
   const timelineQuery = useKaizenTimeline(kaizen.id);
+  const scoreQuery = useKaizenScore(kaizen.id);
+  const commentsQuery = useReviewComments(kaizen.id);
 
   const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [progressPercent, setProgressPercent] = useState(implementation.progressPercent);
   const [progressDescription, setProgressDescription] = useState(implementation.description ?? "");
   const [estimatedCost, setEstimatedCost] = useState(implementation.estimatedCost != null ? String(implementation.estimatedCost) : "");
@@ -81,8 +87,22 @@ export function ImplementationActionBar({ kaizen, implementation, currentUser, b
     setActiveDialog(null);
   }
 
-  function handlePrint() {
-    window.print();
+  async function handlePrint() {
+    setIsGeneratingPdf(true);
+    try {
+      await downloadKaizenReportPdf({
+        kaizen,
+        score: scoreQuery.data ?? null,
+        timeline: timelineQuery.data ?? [],
+        comments: commentsQuery.data ?? [],
+        implementation,
+        businessImpact: businessImpact ?? null,
+      });
+    } catch {
+      toast.error("Could not generate the PDF report.");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   }
 
   function handleExport() {
@@ -169,9 +189,9 @@ export function ImplementationActionBar({ kaizen, implementation, currentUser, b
           <Button variant="ghost" size="sm" asChild>
             <Link href={`/kaizen/${kaizen.id}`}>Original Kaizen</Link>
           </Button>
-          <Button variant="ghost" size="sm" onClick={handlePrint}>
-            <Printer className="h-3.5 w-3.5" />
-            Print
+          <Button variant="ghost" size="sm" onClick={() => void handlePrint()} disabled={isGeneratingPdf}>
+            {isGeneratingPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Printer className="h-3.5 w-3.5" />}
+            {isGeneratingPdf ? "Generating…" : "Print"}
           </Button>
           <Button variant="ghost" size="sm" onClick={handleExport}>
             <Download className="h-3.5 w-3.5" />

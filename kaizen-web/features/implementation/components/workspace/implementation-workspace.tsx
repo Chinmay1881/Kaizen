@@ -39,8 +39,10 @@ interface ImplementationWorkspaceProps {
 /**
  * The three-panel Implementation Workspace root — same shallow-URL-sync approach as the Review
  * Workspace (Milestone 13): selection is client state, the URL is kept in sync via
- * `window.history.replaceState` directly rather than Next's router, so selecting a row never
- * re-triggers the dashboard layout's `PageTransition` fade.
+ * `window.history.replaceState` directly rather than a real Next.js navigation, so the
+ * already-fetched row renders instantly instead of waiting on a server round-trip. See
+ * `components/layout/page-transition.tsx`'s comment for why `PageTransition` must (and does)
+ * ignore this URL change rather than treating it as a page-to-page navigation.
  */
 export function ImplementationWorkspace({ initialId }: ImplementationWorkspaceProps) {
   const { data: currentUser } = useCurrentUser();
@@ -74,7 +76,9 @@ export function ImplementationWorkspace({ initialId }: ImplementationWorkspacePr
     if (!selectedId) return;
     const nextPath = `/implementation/${selectedId}`;
     if (window.location.pathname !== nextPath) {
-      window.history.replaceState(null, "", nextPath);
+      // Preserve the current filter query string — see the identical comment in
+      // review-workspace.tsx for why a bare path would silently drop it.
+      window.history.replaceState(null, "", `${nextPath}${window.location.search}`);
     }
   }, [selectedId]);
 

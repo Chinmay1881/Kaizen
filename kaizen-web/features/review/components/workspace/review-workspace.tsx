@@ -50,11 +50,16 @@ interface ReviewWorkspaceProps {
 
 /**
  * The three-panel Review Workspace root. Selection is client-side state, not a route change —
- * `router.push`/`replace` would re-trigger the dashboard layout's `PageTransition` (keyed on
- * `usePathname()`) on every single row click, fading the whole page each time. Instead the URL
- * is kept in sync with `window.history.replaceState` directly (cosmetic + shareable + survives a
- * refresh via `/review/[id]`), bypassing Next's router entirely so selecting a row never
- * triggers a page transition.
+ * `router.push`/`replace` would trigger a real Next.js navigation (a fresh server fetch for the
+ * new `/review/[id]`) on every single row click. Instead the URL is kept in sync with
+ * `window.history.replaceState` directly (cosmetic + shareable + survives a refresh, since
+ * `/review/[id]`'s page still reads it via `params` on a hard load) without waiting on a server
+ * round-trip — the already-fetched queue row's data renders instantly.
+ *
+ * `PageTransition` (`components/layout/page-transition.tsx`) is what makes this safe: it ignores
+ * a trailing Kaizen-UUID path segment when deciding whether to cross-fade/remount, specifically so
+ * this in-place URL update doesn't unmount the workspace and wipe `explicitId`. See that file's
+ * comment for why a naive `key={pathname}` breaks this under Next.js 16.
  */
 export function ReviewWorkspace({ initialId }: ReviewWorkspaceProps) {
   const { data: currentUser } = useCurrentUser();
@@ -98,7 +103,10 @@ export function ReviewWorkspace({ initialId }: ReviewWorkspaceProps) {
     if (!selectedId) return;
     const nextPath = `/review/${selectedId}`;
     if (window.location.pathname !== nextPath) {
-      window.history.replaceState(null, "", nextPath);
+      // Preserve the current filter query string (`?status=...&sort=...`) — replacing with a
+      // bare path would silently drop it from the URL (and, since Next 16 syncs `useSearchParams`
+      // to whatever URL is passed here too, from `useUrlFilters`'s live filter state as well).
+      window.history.replaceState(null, "", `${nextPath}${window.location.search}`);
     }
   }, [selectedId]);
 
