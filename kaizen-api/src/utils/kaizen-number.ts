@@ -1,3 +1,3 @@
-export function formatKaizenNumber(year: number, sequence: number): string {
-  return `KZN-${year}-${String(sequence).padStart(5, "0")}`;
+export function formatKaizenNumber(employeeCode: string, year: number, sequence: number): string {
+  return `KZN-${employeeCode}-${year}-${String(sequence).padStart(5, "0")}`;
 }

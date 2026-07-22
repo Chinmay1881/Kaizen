@@ -2,8 +2,21 @@ import { clerkClient } from "@clerk/express";
 
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
+import { formatEmployeeCode } from "../../utils/employee-code.js";
 import { normalizeApiUser } from "./clerk-user.mapper.js";
 import type { MeResponse, NormalizedClerkUser, UpdateMeInput } from "./auth.types.js";
+
+/** Atomically reserves the next employee code — same upsert-and-increment pattern as
+ * `nextKaizenNumber` in kaizen.service.ts. Only ever called for a genuinely new user (see
+ * `syncUser` below), so codes are never burned on a Clerk `user.updated` event. */
+async function nextEmployeeCode(): Promise<string> {
+  const sequence = await prisma.employeeCodeSequence.upsert({
+    where: { id: 1 },
+    create: { id: 1, lastValue: 1 },
+    update: { lastValue: { increment: 1 } },
+  });
+  return formatEmployeeCode(sequence.lastValue);
+}
 
 const USER_WITH_PROFILE_INCLUDE = {
   department: { select: { id: true, name: true, code: true } },
@@ -41,24 +54,36 @@ function findUserWithProfile(userId: string) {
 }
 
 class AuthService {
-  /** Creates or updates the local `users` row from Clerk data (webhook or JIT sync share this). */
+  /** Creates or updates the local `users` row from Clerk data (webhook or JIT sync share this).
+   * Deliberately a find-then-branch rather than a single `upsert` — `employeeCode` must be
+   * generated exactly once, only on real creation, never re-derived or touched on every
+   * `user.updated` webhook delivery a profile edit would otherwise trigger. */
   async syncUser(input: NormalizedClerkUser) {
     const displayName = `${input.firstName} ${input.lastName}`.trim() || input.email;
 
-    return prisma.user.upsert({
+    const existing = await prisma.user.findUnique({ where: { clerkId: input.clerkId } });
+
+    if (!existing) {
+      const employeeCode = await nextEmployeeCode();
+      return prisma.user.create({
+        data: {
+          employeeCode,
+          clerkId: input.clerkId,
+          email: input.email,
+          firstName: input.firstName,
+          lastName: input.lastName,
+          displayName,
+          avatarUrl: input.avatarUrl,
+          role: input.role ?? "EMPLOYEE",
+          isActive: true,
+          gamification: { create: {} },
+        },
+      });
+    }
+
+    return prisma.user.update({
       where: { clerkId: input.clerkId },
-      create: {
-        clerkId: input.clerkId,
-        email: input.email,
-        firstName: input.firstName,
-        lastName: input.lastName,
-        displayName,
-        avatarUrl: input.avatarUrl,
-        role: input.role ?? "EMPLOYEE",
-        isActive: true,
-        gamification: { create: {} },
-      },
-      update: {
+      data: {
         email: input.email,
         firstName: input.firstName,
         lastName: input.lastName,

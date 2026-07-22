@@ -25,6 +25,7 @@ type AdminUserRow = Prisma.UserGetPayload<{ include: typeof ADMIN_USER_INCLUDE }
 function toAdminUserItem(user: AdminUserRow): AdminUserItem {
   return {
     id: user.id,
+    employeeCode: user.employeeCode,
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,

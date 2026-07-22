@@ -1,5 +1,6 @@
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
+import { COST_TYPE_OPTIONS, DURATION_UNIT_OPTIONS, IMPACT_LEVEL_LABELS } from "@/features/kaizen/constants/cost-of-implementation";
 import type { KaizenReportData } from "@/features/review/utils/kaizen-report-data";
 import { findApprovalDate, findApprover, implementationReadiness } from "@/features/review/utils/kaizen-report-data";
 
@@ -182,25 +183,54 @@ export function KaizenReportDocument({ kaizen, score, timeline, comments, implem
 
         <Section title="Current Process">
           <Text style={styles.body}>{kaizen.currentProcess || "Not provided."}</Text>
-        </Section>
-
-        <Section title="Root Cause Analysis (5 Why)">
-          {kaizen.fiveWhy.length > 0 ? (
-            kaizen.fiveWhy
-              .sort((a, b) => a.level - b.level)
-              .map((entry) => (
-                <View key={entry.level} style={styles.listItem} wrap={false}>
-                  <Text style={styles.bullet}>{entry.level}.</Text>
-                  <Text style={styles.listItemText}>{entry.answer}</Text>
-                </View>
-              ))
-          ) : (
-            <Text style={styles.mutedText}>Not provided.</Text>
-          )}
+          {imageAttachments.length > 0 ? (
+            <View style={[styles.attachmentImageRow, { marginTop: 8 }]}>
+              {imageAttachments.map((attachment) => (
+                // eslint-disable-next-line jsx-a11y/alt-text -- @react-pdf/renderer's Image has no `alt` prop; it's a PDF drawing primitive, not an HTML <img>
+                <Image key={attachment.id} src={attachment.cloudinarySecureUrl} style={styles.attachmentImage} />
+              ))}
+            </View>
+          ) : null}
         </Section>
 
         <Section title="Proposed Improvement">
           <Text style={styles.body}>{kaizen.proposedSolution || "Not provided."}</Text>
+        </Section>
+
+        <Section title="Cost of Implementation">
+          {kaizen.costOfImplementation ? (
+            <>
+              <View style={styles.factGrid}>
+                <Fact label="Estimated Cost" value={formatCurrency(kaizen.costOfImplementation.estimatedCost)} />
+                <Fact label="Cost Type" value={COST_TYPE_OPTIONS.find((o) => o.value === kaizen.costOfImplementation?.costType)?.label ?? "—"} />
+                <Fact
+                  label="Duration"
+                  value={
+                    kaizen.costOfImplementation.estimatedDurationValue != null
+                      ? `${kaizen.costOfImplementation.estimatedDurationValue} ${DURATION_UNIT_OPTIONS.find((o) => o.value === kaizen.costOfImplementation?.estimatedDurationUnit)?.label ?? ""}`
+                      : "—"
+                  }
+                />
+                <Fact label="Employees Required" value={kaizen.costOfImplementation.employeesRequired != null ? String(kaizen.costOfImplementation.employeesRequired) : "—"} />
+                <Fact label="External Vendor" value={kaizen.costOfImplementation.vendorRequired ? "Yes" : "No"} />
+                <Fact label="Annual Savings" value={formatCurrency(kaizen.costOfImplementation.estimatedAnnualSavings)} />
+                <Fact label="Time Saved" value={kaizen.costOfImplementation.timeSavedHoursPerDay != null ? `${kaizen.costOfImplementation.timeSavedHoursPerDay} hrs/day` : "—"} />
+                <Fact label="Payback Period" value={kaizen.costOfImplementation.expectedPaybackPeriod || "—"} />
+                <Fact label="Quality Improvement" value={kaizen.costOfImplementation.qualityImprovement ? IMPACT_LEVEL_LABELS[kaizen.costOfImplementation.qualityImprovement] : "—"} />
+                <Fact label="Safety Improvement" value={kaizen.costOfImplementation.safetyImprovement ? IMPACT_LEVEL_LABELS[kaizen.costOfImplementation.safetyImprovement] : "—"} />
+                <Fact
+                  label="Customer Satisfaction"
+                  value={kaizen.costOfImplementation.customerSatisfactionImprovement ? IMPACT_LEVEL_LABELS[kaizen.costOfImplementation.customerSatisfactionImprovement] : "—"}
+                />
+                <Fact label="Waste Reduction" value={kaizen.costOfImplementation.wasteReductionImprovement ? IMPACT_LEVEL_LABELS[kaizen.costOfImplementation.wasteReductionImprovement] : "—"} />
+              </View>
+              {kaizen.costOfImplementation.additionalNotes ? (
+                <Text style={[styles.body, { marginTop: 8 }]}>{kaizen.costOfImplementation.additionalNotes}</Text>
+              ) : null}
+            </>
+          ) : (
+            <Text style={styles.mutedText}>Not provided.</Text>
+          )}
         </Section>
 
         <Section title="Expected Benefits">
@@ -262,30 +292,18 @@ export function KaizenReportDocument({ kaizen, score, timeline, comments, implem
           </Section>
         ) : null}
 
-        <Section title="Attachments">
-          {kaizen.attachments.length === 0 ? (
-            <Text style={styles.mutedText}>No attachments.</Text>
-          ) : (
-            <>
-              {imageAttachments.length > 0 ? (
-                <View style={styles.attachmentImageRow}>
-                  {imageAttachments.map((attachment) => (
-                    // eslint-disable-next-line jsx-a11y/alt-text -- @react-pdf/renderer's Image has no `alt` prop; it's a PDF drawing primitive, not an HTML <img>
-                    <Image key={attachment.id} src={attachment.cloudinarySecureUrl} style={styles.attachmentImage} />
-                  ))}
-                </View>
-              ) : null}
-              {otherAttachments.map((attachment) => (
-                <View key={attachment.id} style={styles.listItem}>
-                  <Text style={styles.bullet}>•</Text>
-                  <Text style={styles.listItemText}>
-                    {attachment.fileName} <Text style={styles.mutedText}>— uploaded by {attachment.uploadedBy.displayName}</Text>
-                  </Text>
-                </View>
-              ))}
-            </>
-          )}
-        </Section>
+        {otherAttachments.length > 0 ? (
+          <Section title="Other Attachments">
+            {otherAttachments.map((attachment) => (
+              <View key={attachment.id} style={styles.listItem}>
+                <Text style={styles.bullet}>•</Text>
+                <Text style={styles.listItemText}>
+                  {attachment.fileName} <Text style={styles.mutedText}>— uploaded by {attachment.uploadedBy.displayName}</Text>
+                </Text>
+              </View>
+            ))}
+          </Section>
+        ) : null}
 
         <Section title="Reviewer Comments">
           {comments.length === 0 ? (

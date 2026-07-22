@@ -1,5 +1,6 @@
 import type { KaizenStatus } from "../../constants/kaizen-status.js";
 import type { KaizenPriority, EstimatedImpact } from "../../constants/kaizen-priority.js";
+import type { CostType, DurationUnit, ImpactLevel } from "../../constants/cost-of-implementation.js";
 
 export interface FiveW1HInput {
   what?: string;
@@ -10,9 +11,26 @@ export interface FiveW1HInput {
   how?: string;
 }
 
-export interface FiveWhyInput {
-  level: number;
-  answer: string;
+export interface CostOfImplementationInput {
+  costType?: CostType;
+  estimatedCost?: number;
+  currency?: string;
+  estimatedDurationValue?: number;
+  estimatedDurationUnit?: DurationUnit;
+  employeesRequired?: number;
+  departmentIds?: string[];
+  materialsRequired?: string;
+  machinesRequired?: string;
+  vendorRequired?: boolean;
+  vendorDetails?: string;
+  estimatedAnnualSavings?: number;
+  timeSavedHoursPerDay?: number;
+  qualityImprovement?: ImpactLevel;
+  safetyImprovement?: ImpactLevel;
+  customerSatisfactionImprovement?: ImpactLevel;
+  wasteReductionImprovement?: ImpactLevel;
+  expectedPaybackPeriod?: string;
+  additionalNotes?: string;
 }
 
 export interface BenefitInput {
@@ -36,7 +54,7 @@ export interface UpdateKaizenInput {
   currentProcess?: string;
   proposedSolution?: string;
   fiveW1H?: FiveW1HInput;
-  fiveWhy?: FiveWhyInput[];
+  costOfImplementation?: CostOfImplementationInput;
   benefits?: BenefitInput[];
 }
 
@@ -73,7 +91,7 @@ export interface KaizenDetail extends KaizenListItem {
   currentProcess: string | null;
   proposedSolution: string | null;
   fiveW1H: FiveW1HInput | null;
-  fiveWhy: FiveWhyInput[];
+  costOfImplementation: CostOfImplementationInput | null;
   benefits: (BenefitInput & { id: string })[];
   attachments: KaizenAttachmentItem[];
 }

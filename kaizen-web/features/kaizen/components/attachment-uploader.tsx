@@ -19,17 +19,25 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-interface Step6AttachmentsProps {
-  /** Set by the time this step is reachable — the wizard always creates the draft on the first
-   * "Next" click (step 1 -> 2), well before a user can reach step 6. */
+interface AttachmentUploaderProps {
+  /** Set by the time this is reachable — the wizard always creates the draft on the first "Next"
+   * click (step 1 -> 2), before a user can reach this uploader inside step 2. */
   draftId: string | null;
 }
 
-/** Uploads each file to Cloudinary immediately on selection (`POST /kaizens/:id/attachments`,
+/**
+ * Uploads each file to Cloudinary immediately on selection (`POST /kaizens/:id/attachments`,
  * multipart), against the draft already created for this wizard session — not deferred to submit
  * time. Removing a file calls `DELETE /kaizens/:id/attachments/:attachmentId` so an uploaded-then-
- * removed file doesn't linger as an orphaned Cloudinary asset attached to the Kaizen. */
-export function Step6Attachments({ draftId }: Step6AttachmentsProps) {
+ * removed file doesn't linger as an orphaned Cloudinary asset attached to the Kaizen.
+ *
+ * Lives inside Step 2 (Process) rather than as its own wizard step — the images document the
+ * current process being described there, so reviewers and the Details page show them in that same
+ * section (see review-document.tsx / kaizen-case-study.tsx). The upload mechanics themselves
+ * (endpoints, Cloudinary, size/type limits) are unchanged from before; only where this component
+ * is mounted moved.
+ */
+export function AttachmentUploader({ draftId }: AttachmentUploaderProps) {
   const { control, formState } = useFormContext<WizardFormValues>();
   const { fields, append, remove } = useFieldArray({ control, name: "attachments" });
   const [isDragging, setIsDragging] = useState(false);
@@ -101,7 +109,7 @@ export function Step6Attachments({ draftId }: Step6AttachmentsProps) {
   return (
     <div className="flex flex-col gap-4">
       <p className="text-muted-foreground text-sm">
-        Attach supporting images, videos, PDFs, or documents. Up to {MAX_FILES} files, 25 MB each.
+        Attach photos of the current process (or supporting videos/PDFs/documents). Up to {MAX_FILES} files, 25 MB each.
       </p>
 
       <div
@@ -131,7 +139,7 @@ export function Step6Attachments({ draftId }: Step6AttachmentsProps) {
         ) : (
           <Upload className="text-muted-foreground h-6 w-6" />
         )}
-        <p className="text-sm font-medium">{isUploading ? "Uploading…" : "Drag & drop files here, or click to browse"}</p>
+        <p className="text-sm font-medium">{isUploading ? "Uploading…" : "Drag & drop images here, or click to browse"}</p>
         <p className="text-muted-foreground text-xs">Images, videos, PDF, Word, Excel, PowerPoint</p>
         <input
           ref={inputRef}

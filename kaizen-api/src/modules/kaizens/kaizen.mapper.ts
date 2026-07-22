@@ -1,3 +1,6 @@
+import type { Prisma } from "@prisma/client";
+
+import type { CostType, DurationUnit, ImpactLevel } from "../../constants/cost-of-implementation.js";
 import type { KaizenAttachmentItem, KaizenDetail, KaizenListItem } from "./kaizen.types.js";
 
 const KAIZEN_LIST_SELECT = {
@@ -52,7 +55,7 @@ const KAIZEN_DETAIL_INCLUDE = {
   department: { select: { id: true, name: true } },
   submitter: { select: { id: true, displayName: true } },
   fiveW1H: true,
-  fiveWhys: { orderBy: { level: "asc" as const } },
+  costOfImplementation: true,
   benefits: { orderBy: { sortOrder: "asc" as const } },
   attachments: {
     orderBy: { createdAt: "asc" as const },
@@ -97,7 +100,27 @@ type KaizenWithRelations = {
     why: string | null;
     how: string | null;
   } | null;
-  fiveWhys: { level: number; answer: string }[];
+  costOfImplementation: {
+    costType: string | null;
+    estimatedCost: Prisma.Decimal | null;
+    currency: string;
+    estimatedDurationValue: number | null;
+    estimatedDurationUnit: string | null;
+    employeesRequired: number | null;
+    departmentIds: string[];
+    materialsRequired: string | null;
+    machinesRequired: string | null;
+    vendorRequired: boolean;
+    vendorDetails: string | null;
+    estimatedAnnualSavings: Prisma.Decimal | null;
+    timeSavedHoursPerDay: Prisma.Decimal | null;
+    qualityImprovement: string | null;
+    safetyImprovement: string | null;
+    customerSatisfactionImprovement: string | null;
+    wasteReductionImprovement: string | null;
+    expectedPaybackPeriod: string | null;
+    additionalNotes: string | null;
+  } | null;
   benefits: { id: string; benefitType: string; description: string; isCustom: boolean }[];
   attachments: KaizenAttachmentRow[];
 };
@@ -144,7 +167,31 @@ function toDetail(kaizen: KaizenWithRelations): KaizenDetail {
           how: kaizen.fiveW1H.how ?? undefined,
         }
       : null,
-    fiveWhy: kaizen.fiveWhys.map((entry) => ({ level: entry.level, answer: entry.answer })),
+    costOfImplementation: kaizen.costOfImplementation
+      ? {
+          costType: (kaizen.costOfImplementation.costType as CostType | null) ?? undefined,
+          estimatedCost: kaizen.costOfImplementation.estimatedCost != null ? Number(kaizen.costOfImplementation.estimatedCost) : undefined,
+          currency: kaizen.costOfImplementation.currency,
+          estimatedDurationValue: kaizen.costOfImplementation.estimatedDurationValue ?? undefined,
+          estimatedDurationUnit: (kaizen.costOfImplementation.estimatedDurationUnit as DurationUnit | null) ?? undefined,
+          employeesRequired: kaizen.costOfImplementation.employeesRequired ?? undefined,
+          departmentIds: kaizen.costOfImplementation.departmentIds,
+          materialsRequired: kaizen.costOfImplementation.materialsRequired ?? undefined,
+          machinesRequired: kaizen.costOfImplementation.machinesRequired ?? undefined,
+          vendorRequired: kaizen.costOfImplementation.vendorRequired,
+          vendorDetails: kaizen.costOfImplementation.vendorDetails ?? undefined,
+          estimatedAnnualSavings:
+            kaizen.costOfImplementation.estimatedAnnualSavings != null ? Number(kaizen.costOfImplementation.estimatedAnnualSavings) : undefined,
+          timeSavedHoursPerDay:
+            kaizen.costOfImplementation.timeSavedHoursPerDay != null ? Number(kaizen.costOfImplementation.timeSavedHoursPerDay) : undefined,
+          qualityImprovement: (kaizen.costOfImplementation.qualityImprovement as ImpactLevel | null) ?? undefined,
+          safetyImprovement: (kaizen.costOfImplementation.safetyImprovement as ImpactLevel | null) ?? undefined,
+          customerSatisfactionImprovement: (kaizen.costOfImplementation.customerSatisfactionImprovement as ImpactLevel | null) ?? undefined,
+          wasteReductionImprovement: (kaizen.costOfImplementation.wasteReductionImprovement as ImpactLevel | null) ?? undefined,
+          expectedPaybackPeriod: kaizen.costOfImplementation.expectedPaybackPeriod ?? undefined,
+          additionalNotes: kaizen.costOfImplementation.additionalNotes ?? undefined,
+        }
+      : null,
     benefits: kaizen.benefits.map((entry) => ({
       id: entry.id,
       benefitType: entry.benefitType,

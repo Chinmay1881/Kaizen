@@ -4,11 +4,16 @@ import { useFormContext } from "react-hook-form";
 
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AttachmentUploader } from "@/features/kaizen/components/attachment-uploader";
 import { CharCounter } from "@/features/kaizen/components/char-counter";
 import { FieldError } from "@/features/kaizen/components/field-error";
 import type { WizardFormValues } from "@/features/kaizen/schemas/wizard-schema";
 
-export function Step2Process() {
+interface Step2ProcessProps {
+  draftId: string | null;
+}
+
+export function Step2Process({ draftId }: Step2ProcessProps) {
   const {
     register,
     watch,
@@ -25,6 +30,7 @@ export function Step2Process() {
           <FieldError message={errors.currentProcess?.message} />
           <CharCounter current={watch("currentProcess").length} max={1500} />
         </div>
+        <AttachmentUploader draftId={draftId} />
       </div>
 
       <div className="space-y-2">

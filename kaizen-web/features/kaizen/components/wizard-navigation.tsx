@@ -7,6 +7,9 @@ interface WizardNavigationProps {
   currentStep: number;
   isSaving: boolean;
   isSubmitting: boolean;
+  /** Defaults to "Submit Kaizen" — Edit Mode overrides this to "Save Changes" or "Resubmit for
+   * Review" depending on the Kaizen's current status (see kaizen-wizard.tsx). */
+  submitLabel?: string;
   onPrevious: () => void;
   onNext: () => void;
   onSubmit: () => void;
@@ -16,6 +19,7 @@ export function WizardNavigation({
   currentStep,
   isSaving,
   isSubmitting,
+  submitLabel = "Submit Kaizen",
   onPrevious,
   onNext,
   onSubmit,
@@ -50,7 +54,7 @@ export function WizardNavigation({
                 Submitting...
               </>
             ) : (
-              "Submit Kaizen"
+              submitLabel
             )}
           </Button>
         ) : (

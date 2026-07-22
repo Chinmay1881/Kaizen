@@ -4,6 +4,7 @@ import { forwardRef } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { AttachmentGallery } from "@/features/kaizen/components/attachment-gallery";
+import { CostOfImplementationSummary } from "@/features/kaizen/components/cost-of-implementation-summary";
 import { KaizenStatusBadge } from "@/features/kaizen/components/kaizen-status-badge";
 import { PRESET_BENEFIT_TYPES } from "@/features/kaizen/constants/benefit-types";
 import type { CurrentUser } from "@/features/auth/types/user";
@@ -78,30 +79,24 @@ export const ReviewDocument = forwardRef<ReviewDocumentHandle, ReviewDocumentPro
 
       <DocumentSection eyebrow="Current Process">
         <p className="text-sm leading-relaxed whitespace-pre-wrap">{kaizen.currentProcess || "Not provided."}</p>
+        {kaizen.attachments.length > 0 ? (
+          <div className="mt-4">
+            <AttachmentGallery attachments={kaizen.attachments} />
+          </div>
+        ) : null}
       </DocumentSection>
 
       <DocumentSection eyebrow="Proposed Improvement">
         <p className="text-sm leading-relaxed whitespace-pre-wrap">{kaizen.proposedSolution || "Not provided."}</p>
       </DocumentSection>
 
-      <DocumentSection eyebrow="Root Cause (5 Whys)">
-        {kaizen.fiveWhy.length > 0 ? (
-          <ol className="flex flex-col gap-2">
-            {kaizen.fiveWhy
-              .slice()
-              .sort((a, b) => a.level - b.level)
-              .map((entry) => (
-                <li key={entry.level} className="flex gap-2 text-sm leading-relaxed">
-                  <span className="text-muted-foreground shrink-0 font-medium">Why {entry.level}.</span>
-                  <span>{entry.answer}</span>
-                </li>
-              ))}
-          </ol>
-        ) : (
-          <p className="text-muted-foreground text-sm">Not provided.</p>
-        )}
+      <DocumentSection eyebrow="Cost of Implementation">
+        <CostOfImplementationSummary cost={kaizen.costOfImplementation} />
+      </DocumentSection>
+
+      <DocumentSection eyebrow="Root Cause (5W1H)">
         {kaizen.fiveW1H ? (
-          <dl className="mt-4 grid grid-cols-2 gap-2 border-t pt-4 text-sm sm:grid-cols-3">
+          <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
             {(Object.entries(FIVE_W1H_LABELS) as [keyof FiveW1H, string][]).map(([field, label]) => (
               <div key={field}>
                 <dt className="text-muted-foreground text-xs">{label}</dt>
@@ -109,7 +104,9 @@ export const ReviewDocument = forwardRef<ReviewDocumentHandle, ReviewDocumentPro
               </div>
             ))}
           </dl>
-        ) : null}
+        ) : (
+          <p className="text-muted-foreground text-sm">Not provided.</p>
+        )}
       </DocumentSection>
 
       <DocumentSection eyebrow="Expected Benefits">
@@ -125,10 +122,6 @@ export const ReviewDocument = forwardRef<ReviewDocumentHandle, ReviewDocumentPro
         ) : (
           <p className="text-muted-foreground text-sm">No benefits recorded.</p>
         )}
-      </DocumentSection>
-
-      <DocumentSection eyebrow="Attachments">
-        <AttachmentGallery attachments={kaizen.attachments} />
       </DocumentSection>
 
       <DocumentSection eyebrow="Evaluation">

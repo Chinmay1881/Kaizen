@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { KAIZEN_PRIORITIES, ESTIMATED_IMPACTS } from "../../constants/kaizen-priority.js";
+import { COST_TYPES, DURATION_UNITS, IMPACT_LEVELS } from "../../constants/cost-of-implementation.js";
 
 export const createKaizenSchema = z.object({
   title: z.string().trim().max(120).optional(),
@@ -18,16 +19,6 @@ const fiveW1HSchema = z
   })
   .optional();
 
-const fiveWhySchema = z
-  .array(
-    z.object({
-      level: z.number().int().min(1).max(5),
-      answer: z.string().trim().min(1).max(1000),
-    }),
-  )
-  .max(5)
-  .optional();
-
 const benefitSchema = z
   .array(
     z.object({
@@ -36,6 +27,38 @@ const benefitSchema = z
       isCustom: z.boolean().optional(),
     }),
   )
+  .optional();
+
+/** Autosave can post this incomplete from any step, so every field is optional here — "required
+ * for submit" is enforced separately in `kaizenService.validateForSubmit`, matching the
+ * fiveW1H/benefits precedent. Value-level constraints (>= 0, vendor details required when a
+ * vendor is needed) apply whenever a field IS present, draft or not. */
+const costOfImplementationSchema = z
+  .object({
+    costType: z.enum(COST_TYPES).optional(),
+    estimatedCost: z.number().min(0, "Estimated cost must be 0 or more.").optional(),
+    currency: z.string().trim().min(1).max(10).optional(),
+    estimatedDurationValue: z.number().int().min(1, "Duration must be at least 1.").optional(),
+    estimatedDurationUnit: z.enum(DURATION_UNITS).optional(),
+    employeesRequired: z.number().int().min(0).optional(),
+    departmentIds: z.array(z.string().uuid()).optional(),
+    materialsRequired: z.string().trim().max(1000).optional(),
+    machinesRequired: z.string().trim().max(1000).optional(),
+    vendorRequired: z.boolean().optional(),
+    vendorDetails: z.string().trim().max(1000).optional(),
+    estimatedAnnualSavings: z.number().min(0, "Estimated savings must be 0 or more.").optional(),
+    timeSavedHoursPerDay: z.number().min(0).optional(),
+    qualityImprovement: z.enum(IMPACT_LEVELS).optional(),
+    safetyImprovement: z.enum(IMPACT_LEVELS).optional(),
+    customerSatisfactionImprovement: z.enum(IMPACT_LEVELS).optional(),
+    wasteReductionImprovement: z.enum(IMPACT_LEVELS).optional(),
+    expectedPaybackPeriod: z.string().trim().max(100).optional(),
+    additionalNotes: z.string().trim().max(1000).optional(),
+  })
+  .refine((value) => !value.vendorRequired || Boolean(value.vendorDetails?.trim()), {
+    message: "Vendor details are required when an external vendor is needed.",
+    path: ["vendorDetails"],
+  })
   .optional();
 
 export const updateKaizenSchema = z
@@ -49,7 +72,7 @@ export const updateKaizenSchema = z
     currentProcess: z.string().trim().min(1).max(1500).optional(),
     proposedSolution: z.string().trim().min(1).max(1500).optional(),
     fiveW1H: fiveW1HSchema,
-    fiveWhy: fiveWhySchema,
+    costOfImplementation: costOfImplementationSchema,
     benefits: benefitSchema,
   })
   .strict();

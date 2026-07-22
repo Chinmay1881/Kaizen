@@ -63,16 +63,31 @@ interface Requester {
   departmentId: string | null;
 }
 
-const EDITABLE_STATUSES = ["DRAFT", "NEEDS_CHANGES"] as const;
+/** Statuses `submit()` may transition OUT of — deliberately narrower than `EDIT_ALLOWED_STATUSES`
+ * below. Widening this to include SUBMITTED would let `submit()` re-fire on an already-submitted
+ * Kaizen (re-emitting `kaizen.submitted`, re-notifying the department manager, risking a duplicate
+ * points award) — the two constants must NOT be merged even though they used to be identical. */
+const SUBMITTABLE_STATUSES = ["DRAFT", "NEEDS_CHANGES"] as const;
 
-async function nextKaizenNumber(): Promise<string> {
+/** Statuses in which the submitter (or Super Admin) may edit field values. Everything past
+ * UNDER_REVIEW (APPROVED, REJECTED, both IMPLEMENTATION_ statuses, BUSINESS_IMPACT_RECORDED,
+ * REWARD_ISSUED, ARCHIVED, PUBLISHED_TO_KNOWLEDGE_BASE) is locked by omission, not enumerated. */
+const EDIT_ALLOWED_STATUSES = ["DRAFT", "SUBMITTED", "NEEDS_CHANGES"] as const;
+
+async function nextKaizenNumber(submitterId: string): Promise<string> {
+  const submitter = await prisma.user.findUnique({
+    where: { id: submitterId },
+    select: { employeeCode: true },
+  });
+  assertFound(submitter);
+
   const year = new Date().getFullYear();
   const sequence = await prisma.kaizenNumberSequence.upsert({
     where: { year },
     create: { year, lastValue: 1 },
     update: { lastValue: { increment: 1 } },
   });
-  return formatKaizenNumber(year, sequence.lastValue);
+  return formatKaizenNumber(submitter.employeeCode, year, sequence.lastValue);
 }
 
 function assertFound<T>(kaizen: T | null): asserts kaizen is T {
@@ -103,7 +118,7 @@ class KaizenService {
       ]);
     }
 
-    const kaizenNumber = await nextKaizenNumber();
+    const kaizenNumber = await nextKaizenNumber(requester.id);
 
     const kaizen = await prisma.kaizen.create({
       data: {
@@ -231,7 +246,7 @@ class KaizenService {
     assertFound(existing);
     this.assertCanEdit(existing, requester);
 
-    const { fiveW1H, fiveWhy, benefits, ...scalarFields } = input;
+    const { fiveW1H, costOfImplementation, benefits, ...scalarFields } = input;
 
     await prisma.$transaction(async (tx) => {
       await tx.kaizen.update({
@@ -247,14 +262,12 @@ class KaizenService {
         });
       }
 
-      if (fiveWhy) {
-        for (const entry of fiveWhy) {
-          await tx.kaizen5Why.upsert({
-            where: { kaizenId_level: { kaizenId, level: entry.level } },
-            create: { kaizenId, level: entry.level, answer: entry.answer },
-            update: { answer: entry.answer },
-          });
-        }
+      if (costOfImplementation) {
+        await tx.kaizenCostOfImplementation.upsert({
+          where: { kaizenId },
+          create: { kaizenId, ...costOfImplementation },
+          update: costOfImplementation,
+        });
       }
 
       if (benefits) {
@@ -382,7 +395,7 @@ class KaizenService {
     if (kaizen.submitterId !== requester.id) {
       throw new ApiError("FORBIDDEN", "Only the submitter can submit this Kaizen.", 403);
     }
-    if (!EDITABLE_STATUSES.includes(kaizen.status as (typeof EDITABLE_STATUSES)[number])) {
+    if (!SUBMITTABLE_STATUSES.includes(kaizen.status as (typeof SUBMITTABLE_STATUSES)[number])) {
       throw new ApiError("CONFLICT", "This Kaizen has already been submitted.", 409);
     }
 
@@ -442,10 +455,23 @@ class KaizenService {
       details.push({ field: "fiveW1H", message: "All six 5W1H questions must be answered." });
     }
 
-    if (kaizen.fiveWhys.length < 5) {
+    const cost = kaizen.costOfImplementation;
+    const costComplete =
+      cost &&
+      cost.costType &&
+      cost.estimatedCost != null &&
+      cost.estimatedDurationValue != null &&
+      cost.estimatedDurationUnit &&
+      cost.estimatedAnnualSavings != null &&
+      cost.qualityImprovement &&
+      cost.safetyImprovement &&
+      cost.customerSatisfactionImprovement &&
+      cost.wasteReductionImprovement &&
+      (!cost.vendorRequired || Boolean(cost.vendorDetails));
+    if (!costComplete) {
       details.push({
-        field: "fiveWhy",
-        message: "All 5 levels of the 5 Why analysis are required.",
+        field: "costOfImplementation",
+        message: "Cost of Implementation must be fully completed, including vendor details if a vendor is required.",
       });
     }
 
@@ -482,7 +508,7 @@ class KaizenService {
     if (!isOwner && !isSuperAdmin) {
       throw new ApiError("FORBIDDEN", "You cannot edit this Kaizen.", 403);
     }
-    if (!EDITABLE_STATUSES.includes(kaizen.status as (typeof EDITABLE_STATUSES)[number])) {
+    if (!EDIT_ALLOWED_STATUSES.includes(kaizen.status as (typeof EDIT_ALLOWED_STATUSES)[number])) {
       throw new ApiError("CONFLICT", "This Kaizen is read-only in its current status.", 409);
     }
   }

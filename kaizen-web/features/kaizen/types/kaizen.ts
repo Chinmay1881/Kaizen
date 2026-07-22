@@ -11,9 +11,30 @@ export interface FiveW1H {
   how?: string;
 }
 
-export interface FiveWhyEntry {
-  level: number;
-  answer: string;
+export type CostType = "ONE_TIME" | "RECURRING";
+export type DurationUnit = "DAYS" | "WEEKS";
+export type ImpactLevel = "LOW" | "MEDIUM" | "HIGH";
+
+export interface CostOfImplementation {
+  costType?: CostType;
+  estimatedCost?: number;
+  currency?: string;
+  estimatedDurationValue?: number;
+  estimatedDurationUnit?: DurationUnit;
+  employeesRequired?: number;
+  departmentIds?: string[];
+  materialsRequired?: string;
+  machinesRequired?: string;
+  vendorRequired?: boolean;
+  vendorDetails?: string;
+  estimatedAnnualSavings?: number;
+  timeSavedHoursPerDay?: number;
+  qualityImprovement?: ImpactLevel;
+  safetyImprovement?: ImpactLevel;
+  customerSatisfactionImprovement?: ImpactLevel;
+  wasteReductionImprovement?: ImpactLevel;
+  expectedPaybackPeriod?: string;
+  additionalNotes?: string;
 }
 
 export interface Benefit {
@@ -56,7 +77,7 @@ export interface KaizenDetail {
   createdAt: string;
   updatedAt: string;
   fiveW1H: FiveW1H | null;
-  fiveWhy: FiveWhyEntry[];
+  costOfImplementation: CostOfImplementation | null;
   benefits: BenefitWithId[];
   attachments: KaizenAttachment[];
 }
@@ -76,7 +97,7 @@ export interface UpdateKaizenInput {
   currentProcess?: string;
   proposedSolution?: string;
   fiveW1H?: FiveW1H;
-  fiveWhy?: FiveWhyEntry[];
+  costOfImplementation?: CostOfImplementation;
   benefits?: Benefit[];
 }
 

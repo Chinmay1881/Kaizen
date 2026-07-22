@@ -2,6 +2,8 @@ import type { UserRole } from "../../constants/roles.js";
 
 export interface AdminUserItem {
   id: string;
+  /** Permanent, assigned once at creation — never editable, not part of `UpdateUserSchema`. */
+  employeeCode: string;
   email: string;
   firstName: string;
   lastName: string;

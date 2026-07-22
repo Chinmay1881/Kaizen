@@ -45,3 +45,19 @@ export function canManageKaizenReview(
 export function canViewCompanyAnalytics(role: UserRole): boolean {
   return hasMinimumRole(role, "HR");
 }
+
+const EDIT_ALLOWED_STATUSES = new Set(["DRAFT", "SUBMITTED", "NEEDS_CHANGES"]);
+
+/** Mirrors the backend's `assertCanEdit` exactly (kaizen.service.ts, kaizen-api) — the submitter
+ * (or Super Admin) may edit a Kaizen only in DRAFT, SUBMITTED, or NEEDS_CHANGES. Everything past
+ * UNDER_REVIEW is locked. Purely a UI gate (hide/disable the Edit entry point) — the backend
+ * enforces this independently regardless of what the frontend shows. */
+export function canEditKaizen(
+  kaizen: { status: string; submitter: { id: string } },
+  user: { id: string; role: UserRole },
+): boolean {
+  const isOwner = kaizen.submitter.id === user.id;
+  const isSuperAdmin = user.role === "SUPER_ADMIN";
+  if (!isOwner && !isSuperAdmin) return false;
+  return EDIT_ALLOWED_STATUSES.has(kaizen.status);
+}

@@ -1,17 +1,21 @@
 "use client";
 
-import { Star } from "lucide-react";
+import Link from "next/link";
+import { Pencil, Star } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingSkeleton } from "@/components/feedback/loading-skeleton";
 import { useCurrentUser } from "@/features/auth/hooks/use-current-user";
 import { AttachmentGallery } from "@/features/kaizen/components/attachment-gallery";
+import { CostOfImplementationSummary } from "@/features/kaizen/components/cost-of-implementation-summary";
 import { KaizenStatusBadge } from "@/features/kaizen/components/kaizen-status-badge";
 import { PRESET_BENEFIT_TYPES } from "@/features/kaizen/constants/benefit-types";
 import { useKaizenDetail } from "@/features/kaizen/hooks/use-kaizen-detail";
 import { useKaizenTimeline } from "@/features/kaizen/hooks/use-kaizen-timeline";
 import type { FiveW1H } from "@/features/kaizen/types/kaizen";
+import { canEditKaizen } from "@/lib/permissions";
 import { useBusinessImpact } from "@/features/implementation/hooks/use-business-impact";
 import { useImplementation } from "@/features/implementation/hooks/use-implementation";
 import { ImplementationBusinessImpact } from "@/features/implementation/components/workspace/implementation-business-impact";
@@ -79,11 +83,22 @@ export function KaizenCaseStudy({ id }: KaizenCaseStudyProps) {
   }
 
   const implementation = implementationQuery.data;
+  const canEdit = currentUser ? canEditKaizen(kaizen, currentUser) : false;
 
   return (
     <article className="mx-auto flex max-w-3xl flex-col gap-8 px-4 py-8 sm:px-8">
       <header className="flex flex-col gap-3">
-        <p className="text-muted-foreground text-sm">{kaizen.kaizenNumber}</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <p className="text-muted-foreground text-sm">{kaizen.kaizenNumber}</p>
+          {canEdit ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/kaizen/${kaizen.id}/edit`}>
+                <Pencil className="h-3.5 w-3.5" />
+                Edit
+              </Link>
+            </Button>
+          ) : null}
+        </div>
         <h1 className="text-2xl font-bold tracking-tight text-balance">{kaizen.title}</h1>
         <div className="flex flex-wrap items-center gap-2">
           <KaizenStatusBadge status={kaizen.status} />
@@ -112,37 +127,31 @@ export function KaizenCaseStudy({ id }: KaizenCaseStudyProps) {
 
       <DocumentSection eyebrow="Current Process">
         <p className="text-sm leading-relaxed whitespace-pre-wrap">{kaizen.currentProcess || "Not provided."}</p>
+        {kaizen.attachments.length > 0 ? (
+          <div className="mt-4">
+            <AttachmentGallery attachments={kaizen.attachments} />
+          </div>
+        ) : null}
       </DocumentSection>
 
       <DocumentSection eyebrow="Proposed Solution">
         <p className="text-sm leading-relaxed whitespace-pre-wrap">{kaizen.proposedSolution || "Not provided."}</p>
       </DocumentSection>
 
-      {kaizen.fiveW1H || kaizen.fiveWhy.length > 0 ? (
-        <DocumentSection eyebrow="Root Cause Analysis">
-          {kaizen.fiveWhy.length > 0 ? (
-            <ol className="mb-4 flex flex-col gap-2">
-              {kaizen.fiveWhy
-                .slice()
-                .sort((a, b) => a.level - b.level)
-                .map((entry) => (
-                  <li key={entry.level} className="flex gap-2 text-sm leading-relaxed">
-                    <span className="text-muted-foreground shrink-0 font-medium">Why {entry.level}.</span>
-                    <span>{entry.answer}</span>
-                  </li>
-                ))}
-            </ol>
-          ) : null}
-          {kaizen.fiveW1H ? (
-            <dl className="grid grid-cols-2 gap-2 border-t pt-4 text-sm sm:grid-cols-3">
-              {(Object.entries(FIVE_W1H_LABELS) as [keyof FiveW1H, string][]).map(([field, label]) => (
-                <div key={field}>
-                  <dt className="text-muted-foreground text-xs">{label}</dt>
-                  <dd>{kaizen.fiveW1H?.[field] || "—"}</dd>
-                </div>
-              ))}
-            </dl>
-          ) : null}
+      <DocumentSection eyebrow="Cost of Implementation">
+        <CostOfImplementationSummary cost={kaizen.costOfImplementation} />
+      </DocumentSection>
+
+      {kaizen.fiveW1H ? (
+        <DocumentSection eyebrow="Root Cause Analysis (5W1H)">
+          <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+            {(Object.entries(FIVE_W1H_LABELS) as [keyof FiveW1H, string][]).map(([field, label]) => (
+              <div key={field}>
+                <dt className="text-muted-foreground text-xs">{label}</dt>
+                <dd>{kaizen.fiveW1H?.[field] || "—"}</dd>
+              </div>
+            ))}
+          </dl>
         </DocumentSection>
       ) : null}
 
@@ -158,10 +167,6 @@ export function KaizenCaseStudy({ id }: KaizenCaseStudyProps) {
         ) : (
           <p className="text-muted-foreground text-sm">No benefits recorded.</p>
         )}
-      </DocumentSection>
-
-      <DocumentSection eyebrow="Attachments">
-        <AttachmentGallery attachments={kaizen.attachments} />
       </DocumentSection>
 
       {scoreQuery.data && scoreQuery.data.evaluations.length > 0 ? (

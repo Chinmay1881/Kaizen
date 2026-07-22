@@ -48,6 +48,10 @@ model Category {
 /// Synced from Clerk via webhook; application data stored here.
 model User {
   id                                String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Permanent, unique, assigned once at creation (see authService.syncUser) — never reassigned or
+  /// edited afterward. Embedded in every Kaizen number submitted by this employee going forward
+  /// (see nextKaizenNumber in kaizen.service.ts).
+  employeeCode                      String                     @unique @map("employee_code") @db.VarChar(20)
   clerkId                           String                     @unique @map("clerk_id") @db.VarChar(255)
   email                             String                     @unique @db.VarChar(255)
   firstName                         String                     @map("first_name") @db.VarChar(100)
@@ -121,9 +125,21 @@ model KaizenNumberSequence {
   @@map("kaizen_number_sequences")
 }
 
+/// Single-row global counter (`id` fixed at 1) for `User.employeeCode` — same upsert-and-increment
+/// pattern as KaizenNumberSequence above, just not year-scoped since employee codes never repeat.
+model EmployeeCodeSequence {
+  id        Int @id @default(1)
+  lastValue Int @default(0) @map("last_value")
+
+  @@map("employee_code_sequence")
+}
+
 model Kaizen {
   id                    String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  kaizenNumber          String              @unique @map("kaizen_number") @db.VarChar(20)
+  /// "KZN-{year}-{seq}" for Kaizens submitted before the employee-code format existed;
+  /// "KZN-{submitter employeeCode}-{year}-{seq}" going forward — see `nextKaizenNumber` in
+  /// kaizen.service.ts. Widened from VARCHAR(20) to fit the longer format.
+  kaizenNumber          String              @unique @map("kaizen_number") @db.VarChar(40)
   title                 String              @db.VarChar(120)
   status                KaizenStatus        @default(DRAFT)
   priority              KaizenPriority      @default(MEDIUM)
@@ -147,7 +163,7 @@ model Kaizen {
   evaluations           Evaluation[]
   implementation        Implementation?
   fiveW1H               Kaizen5W1H?
-  fiveWhys              Kaizen5Why[]
+  costOfImplementation  KaizenCostOfImplementation?
   attachments           KaizenAttachment[]
   benefits              KaizenBenefit[]
   assignedOwner         User?               @relation("KaizenOwner", fields: [assignedOwnerId], references: [id])
@@ -187,18 +203,40 @@ model Kaizen5W1H {
   @@map("kaizen_5w1h")
 }
 
-/// Five rows per completed Kaizen (levels 1-5).
-/// NOTE: `level` should additionally be constrained CHECK (level BETWEEN 1 AND 5) —
-/// add via a follow-up raw-SQL migration; Prisma's schema language cannot express CHECK constraints.
-model Kaizen5Why {
-  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  kaizenId String @map("kaizen_id") @db.Uuid
-  level    Int
-  answer   String
-  kaizen   Kaizen @relation(fields: [kaizenId], references: [id], onDelete: Cascade)
+/// One row per Kaizen — replaces the removed Kaizen5Why step. Every field is nullable at the DB
+/// layer, same as Kaizen5W1H above: this is upserted incrementally by wizard autosave, so
+/// "required" is enforced only at submit-time validation (kaizen.service.ts#validateForSubmit),
+/// never at the schema layer.
+model KaizenCostOfImplementation {
+  id                               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kaizenId                         String        @unique @map("kaizen_id") @db.Uuid
+  costType                         CostType?     @map("cost_type")
+  estimatedCost                    Decimal?      @map("estimated_cost") @db.Decimal(12, 2)
+  currency                         String        @default("INR") @db.VarChar(10)
+  estimatedDurationValue           Int?          @map("estimated_duration_value")
+  estimatedDurationUnit            DurationUnit? @map("estimated_duration_unit")
+  employeesRequired                Int?          @map("employees_required")
+  /// Department IDs, not a relation table — this is a lightweight multi-select on an estimation
+  /// form, not a referential-integrity-critical link (departments are soft-deleted, never hard
+  /// deleted, so a stale id here just stops resolving to a name rather than breaking anything).
+  departmentIds                    String[]      @map("department_ids")
+  materialsRequired                String?       @map("materials_required")
+  machinesRequired                 String?       @map("machines_required")
+  vendorRequired                   Boolean       @default(false) @map("vendor_required")
+  vendorDetails                    String?       @map("vendor_details") @db.VarChar(1000)
+  estimatedAnnualSavings           Decimal?      @map("estimated_annual_savings") @db.Decimal(12, 2)
+  timeSavedHoursPerDay             Decimal?      @map("time_saved_hours_per_day") @db.Decimal(6, 2)
+  qualityImprovement               ImpactLevel?  @map("quality_improvement")
+  safetyImprovement                ImpactLevel?  @map("safety_improvement")
+  customerSatisfactionImprovement  ImpactLevel?  @map("customer_satisfaction_improvement")
+  wasteReductionImprovement        ImpactLevel?  @map("waste_reduction_improvement")
+  expectedPaybackPeriod            String?       @map("expected_payback_period") @db.VarChar(100)
+  additionalNotes                  String?       @map("additional_notes") @db.VarChar(1000)
+  createdAt                        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  kaizen                           Kaizen        @relation(fields: [kaizenId], references: [id], onDelete: Cascade)
 
-  @@unique([kaizenId, level])
-  @@map("kaizen_5why")
+  @@map("kaizen_cost_of_implementation")
 }
 
 model KaizenBenefit {
@@ -619,6 +657,24 @@ enum AttachmentTag {
   BEFORE
   AFTER
   EVIDENCE
+}
+
+enum CostType {
+  ONE_TIME
+  RECURRING
+}
+
+enum DurationUnit {
+  DAYS
+  WEEKS
+}
+
+/// Shared by the four Cost-of-Implementation "improvement" ratings (quality/safety/customer
+/// satisfaction/waste reduction) rather than four near-identical enums.
+enum ImpactLevel {
+  LOW
+  MEDIUM
+  HIGH
 }
 
 enum ImplementationVerificationStatus {
