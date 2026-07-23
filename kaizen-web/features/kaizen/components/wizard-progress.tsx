@@ -15,7 +15,7 @@ export function WizardProgress({ currentStep }: WizardProgressProps) {
       <p className="text-muted-foreground text-sm">
         Step {currentStep} of {TOTAL_STEPS} &middot; {percentComplete}% Complete
       </p>
-      <ol className="flex items-center gap-1 sm:gap-2">
+      <ol className="flex items-center gap-1 overflow-x-auto sm:gap-2">
         {WIZARD_STEPS.map((step, index) => {
           const isCompleted = step.id < currentStep;
           const isCurrent = step.id === currentStep;
@@ -34,9 +34,13 @@ export function WizardProgress({ currentStep }: WizardProgressProps) {
                 >
                   {isCompleted ? <Check className="h-4 w-4" /> : step.id}
                 </div>
+                {/* `whitespace-nowrap` keeps every label on one line — a wrapped label makes that
+                    step's column taller than its neighbors, which throws off the connector's
+                    vertical alignment (it's centered against its own column's height) and makes
+                    the line look broken next to that step. */}
                 <span
                   className={cn(
-                    "hidden text-xs sm:block",
+                    "hidden text-xs whitespace-nowrap sm:block",
                     isCurrent ? "text-foreground font-medium" : "text-muted-foreground",
                   )}
                 >
@@ -45,7 +49,7 @@ export function WizardProgress({ currentStep }: WizardProgressProps) {
               </div>
               {index < WIZARD_STEPS.length - 1 ? (
                 <div
-                  className={cn("h-px flex-1", isCompleted ? "bg-primary" : "bg-border")}
+                  className={cn("h-px min-w-2 flex-1", isCompleted ? "bg-primary" : "bg-border")}
                   aria-hidden="true"
                 />
               ) : null}

@@ -111,18 +111,6 @@ export function Step5Benefits() {
           <CharCounter current={watch("businessImpact")?.length ?? 0} max={500} />
         </div>
       </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="estimatedSavings">Estimated Savings</Label>
-        <p className="text-muted-foreground text-sm">
-          Optional — e.g. &ldquo;₹10,000 per month&rdquo;.
-        </p>
-        <Input id="estimatedSavings" {...register("estimatedSavings")} />
-        <div className="flex items-center justify-between gap-4">
-          <FieldError message={errors.estimatedSavings?.message} />
-          <CharCounter current={watch("estimatedSavings")?.length ?? 0} max={500} />
-        </div>
-      </div>
     </div>
   );
 }
