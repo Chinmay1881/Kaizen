@@ -1,6 +1,6 @@
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
-import { COST_TYPE_OPTIONS, DURATION_UNIT_OPTIONS, IMPACT_LEVEL_LABELS } from "@/features/kaizen/constants/cost-of-implementation";
+import { COST_TYPE_OPTIONS, DURATION_UNIT_OPTIONS } from "@/features/kaizen/constants/cost-of-implementation";
 import type { KaizenReportData } from "@/features/review/utils/kaizen-report-data";
 import { findApprovalDate, findApprover, implementationReadiness } from "@/features/review/utils/kaizen-report-data";
 
@@ -195,6 +195,14 @@ export function KaizenReportDocument({ kaizen, score, timeline, comments, implem
 
         <Section title="Proposed Improvement">
           <Text style={styles.body}>{kaizen.proposedSolution || "Not provided."}</Text>
+          {kaizen.costOfImplementation?.estimatedDurationValue != null ? (
+            <View style={[styles.factGrid, { marginTop: 8 }]}>
+              <Fact
+                label="Estimated Duration"
+                value={`${kaizen.costOfImplementation.estimatedDurationValue} ${DURATION_UNIT_OPTIONS.find((o) => o.value === kaizen.costOfImplementation?.estimatedDurationUnit)?.label ?? ""}`}
+              />
+            </View>
+          ) : null}
         </Section>
 
         <Section title="Cost of Implementation">
@@ -203,26 +211,10 @@ export function KaizenReportDocument({ kaizen, score, timeline, comments, implem
               <View style={styles.factGrid}>
                 <Fact label="Estimated Cost" value={formatCurrency(kaizen.costOfImplementation.estimatedCost)} />
                 <Fact label="Cost Type" value={COST_TYPE_OPTIONS.find((o) => o.value === kaizen.costOfImplementation?.costType)?.label ?? "—"} />
-                <Fact
-                  label="Duration"
-                  value={
-                    kaizen.costOfImplementation.estimatedDurationValue != null
-                      ? `${kaizen.costOfImplementation.estimatedDurationValue} ${DURATION_UNIT_OPTIONS.find((o) => o.value === kaizen.costOfImplementation?.estimatedDurationUnit)?.label ?? ""}`
-                      : "—"
-                  }
-                />
-                <Fact label="Employees Required" value={kaizen.costOfImplementation.employeesRequired != null ? String(kaizen.costOfImplementation.employeesRequired) : "—"} />
                 <Fact label="External Vendor" value={kaizen.costOfImplementation.vendorRequired ? "Yes" : "No"} />
                 <Fact label="Annual Savings" value={formatCurrency(kaizen.costOfImplementation.estimatedAnnualSavings)} />
                 <Fact label="Time Saved" value={kaizen.costOfImplementation.timeSavedHoursPerDay != null ? `${kaizen.costOfImplementation.timeSavedHoursPerDay} hrs/day` : "—"} />
                 <Fact label="Payback Period" value={kaizen.costOfImplementation.expectedPaybackPeriod || "—"} />
-                <Fact label="Quality Improvement" value={kaizen.costOfImplementation.qualityImprovement ? IMPACT_LEVEL_LABELS[kaizen.costOfImplementation.qualityImprovement] : "—"} />
-                <Fact label="Safety Improvement" value={kaizen.costOfImplementation.safetyImprovement ? IMPACT_LEVEL_LABELS[kaizen.costOfImplementation.safetyImprovement] : "—"} />
-                <Fact
-                  label="Customer Satisfaction"
-                  value={kaizen.costOfImplementation.customerSatisfactionImprovement ? IMPACT_LEVEL_LABELS[kaizen.costOfImplementation.customerSatisfactionImprovement] : "—"}
-                />
-                <Fact label="Waste Reduction" value={kaizen.costOfImplementation.wasteReductionImprovement ? IMPACT_LEVEL_LABELS[kaizen.costOfImplementation.wasteReductionImprovement] : "—"} />
               </View>
               {kaizen.costOfImplementation.additionalNotes ? (
                 <Text style={[styles.body, { marginTop: 8 }]}>{kaizen.costOfImplementation.additionalNotes}</Text>

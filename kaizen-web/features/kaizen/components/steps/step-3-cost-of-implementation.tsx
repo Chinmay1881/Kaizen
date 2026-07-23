@@ -8,11 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  COST_TYPE_OPTIONS,
-  DURATION_UNIT_OPTIONS,
-  IMPACT_LEVEL_OPTIONS,
-} from "@/features/kaizen/constants/cost-of-implementation";
+import { COST_TYPE_OPTIONS } from "@/features/kaizen/constants/cost-of-implementation";
 import { FieldError } from "@/features/kaizen/components/field-error";
 import { useDepartments } from "@/features/kaizen/hooks/use-departments";
 import type { WizardFormValues } from "@/features/kaizen/schemas/wizard-schema";
@@ -50,7 +46,7 @@ export function Step3CostOfImplementation() {
     <div className="flex flex-col gap-8">
       <div className="space-y-4">
         <p className="text-sm font-semibold">Implementation Cost</p>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <FieldGroup label="Estimated Cost (₹)" htmlFor="estimatedCost" error={costErrors?.estimatedCost?.message}>
             <Input id="estimatedCost" type="number" min={0} step="0.01" {...register("costOfImplementation.estimatedCost", { valueAsNumber: true })} />
           </FieldGroup>
@@ -69,33 +65,11 @@ export function Step3CostOfImplementation() {
               ))}
             </Select>
           </FieldGroup>
-          <div className="grid grid-cols-2 gap-2">
-            <FieldGroup label="Estimated Duration" htmlFor="estimatedDurationValue" error={costErrors?.estimatedDurationValue?.message}>
-              <Input id="estimatedDurationValue" type="number" min={1} {...register("costOfImplementation.estimatedDurationValue", { valueAsNumber: true })} />
-            </FieldGroup>
-            <FieldGroup label="Unit" htmlFor="estimatedDurationUnit" error={costErrors?.estimatedDurationUnit?.message}>
-              <Select id="estimatedDurationUnit" {...register("costOfImplementation.estimatedDurationUnit")} defaultValue="">
-                <option value="" disabled>
-                  Select unit
-                </option>
-                {DURATION_UNIT_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
-            </FieldGroup>
-          </div>
         </div>
       </div>
 
       <div className="space-y-4 border-t pt-6">
         <p className="text-sm font-semibold">Resources Required</p>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <FieldGroup label="Number of Employees Required" htmlFor="employeesRequired" error={costErrors?.employeesRequired?.message}>
-            <Input id="employeesRequired" type="number" min={0} {...register("costOfImplementation.employeesRequired", { valueAsNumber: true })} />
-          </FieldGroup>
-        </div>
 
         <div className="space-y-2">
           <Label>Departments Involved</Label>
@@ -133,10 +107,6 @@ export function Step3CostOfImplementation() {
 
         <FieldGroup label="Materials Required" htmlFor="materialsRequired" error={costErrors?.materialsRequired?.message}>
           <Textarea id="materialsRequired" rows={2} {...register("costOfImplementation.materialsRequired")} />
-        </FieldGroup>
-
-        <FieldGroup label="Machines Required" htmlFor="machinesRequired" error={costErrors?.machinesRequired?.message}>
-          <Textarea id="machinesRequired" rows={2} {...register("costOfImplementation.machinesRequired")} />
         </FieldGroup>
 
         <div className="space-y-2">
@@ -184,57 +154,6 @@ export function Step3CostOfImplementation() {
           </FieldGroup>
           <FieldGroup label="Time Saved (hours/day)" htmlFor="timeSavedHoursPerDay" error={costErrors?.timeSavedHoursPerDay?.message}>
             <Input id="timeSavedHoursPerDay" type="number" min={0} step="0.1" {...register("costOfImplementation.timeSavedHoursPerDay", { valueAsNumber: true })} />
-          </FieldGroup>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <FieldGroup label="Quality Improvement" htmlFor="qualityImprovement" error={costErrors?.qualityImprovement?.message}>
-            <Select id="qualityImprovement" {...register("costOfImplementation.qualityImprovement")} defaultValue="">
-              <option value="" disabled>
-                Select level
-              </option>
-              {IMPACT_LEVEL_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </FieldGroup>
-          <FieldGroup label="Safety Improvement" htmlFor="safetyImprovement" error={costErrors?.safetyImprovement?.message}>
-            <Select id="safetyImprovement" {...register("costOfImplementation.safetyImprovement")} defaultValue="">
-              <option value="" disabled>
-                Select level
-              </option>
-              {IMPACT_LEVEL_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </FieldGroup>
-          <FieldGroup label="Customer Satisfaction Improvement" htmlFor="customerSatisfactionImprovement" error={costErrors?.customerSatisfactionImprovement?.message}>
-            <Select id="customerSatisfactionImprovement" {...register("costOfImplementation.customerSatisfactionImprovement")} defaultValue="">
-              <option value="" disabled>
-                Select level
-              </option>
-              {IMPACT_LEVEL_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </FieldGroup>
-          <FieldGroup label="Waste Reduction" htmlFor="wasteReductionImprovement" error={costErrors?.wasteReductionImprovement?.message}>
-            <Select id="wasteReductionImprovement" {...register("costOfImplementation.wasteReductionImprovement")} defaultValue="">
-              <option value="" disabled>
-                Select level
-              </option>
-              {IMPACT_LEVEL_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
           </FieldGroup>
         </div>
       </div>

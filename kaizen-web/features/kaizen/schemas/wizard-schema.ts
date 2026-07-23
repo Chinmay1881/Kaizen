@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { FieldPath } from "react-hook-form";
 
 /**
  * One schema for the whole wizard rather than one per step — all steps share a single React Hook
@@ -52,9 +53,16 @@ export const wizardSchema = z.object({
     )
     .max(10, "Maximum 10 files."),
 
-  // Step 3 — Cost of Implementation. Required fields mirror the backend's submit-time check
-  // (kaizen.service.ts#validateForSubmit) exactly, so a user can never reach Step 6 and be
-  // rejected by the server for something Step 3 should have already caught.
+  // Step 3 — Cost of Implementation. `estimatedDurationValue`/`estimatedDurationUnit` stay part of
+  // this same nested object (unchanged data binding, unchanged backend payload shape) even though
+  // they're now entered on Step 2 — see STEP_FIELD_NAMES below, which triggers those two nested
+  // paths at Step 2 instead of waiting for Step 3's whole-object trigger. "Number of Employees
+  // Required", "Machines Required", and the four LOW/MEDIUM/HIGH improvement ratings were removed
+  // per product decision — not just hidden from the UI, dropped from the schema entirely (the
+  // backend's `costOfImplementationSchema` already had them as optional, so no API change).
+  // Required fields mirror the backend's submit-time check (kaizen.service.ts#validateForSubmit)
+  // exactly, so a user can never reach Step 6 and be rejected by the server for something an
+  // earlier step should have already caught.
   costOfImplementation: z
     .object({
       // Plain `z.number()`, not `z.coerce.number()` — numeric <input>s use RHF's own
@@ -71,18 +79,12 @@ export const wizardSchema = z.object({
       currency: z.string().trim().min(1).max(10),
       estimatedDurationValue: z.number().int().min(1, "Duration is required."),
       estimatedDurationUnit: z.enum(["DAYS", "WEEKS"], { message: "Please select a duration unit." }),
-      employeesRequired: z.number().int().min(0).optional(),
       departmentIds: z.array(z.string()),
       materialsRequired: z.string().trim().max(1000).optional(),
-      machinesRequired: z.string().trim().max(1000).optional(),
       vendorRequired: z.boolean(),
       vendorDetails: z.string().trim().max(1000).optional(),
       estimatedAnnualSavings: z.number().min(0, "Must be 0 or more."),
       timeSavedHoursPerDay: z.number().min(0).optional(),
-      qualityImprovement: z.enum(["LOW", "MEDIUM", "HIGH"], { message: "Required." }),
-      safetyImprovement: z.enum(["LOW", "MEDIUM", "HIGH"], { message: "Required." }),
-      customerSatisfactionImprovement: z.enum(["LOW", "MEDIUM", "HIGH"], { message: "Required." }),
-      wasteReductionImprovement: z.enum(["LOW", "MEDIUM", "HIGH"], { message: "Required." }),
       expectedPaybackPeriod: z.string().trim().max(100).optional(),
       additionalNotes: z.string().trim().max(1000).optional(),
     })
@@ -117,9 +119,21 @@ export const wizardSchema = z.object({
 
 export type WizardFormValues = z.infer<typeof wizardSchema>;
 
-export const STEP_FIELD_NAMES: Record<number, (keyof WizardFormValues)[]> = {
+// Nested dot-paths (e.g. "costOfImplementation.estimatedDurationValue") are valid RHF field
+// paths, not just top-level keys — `FieldPath` (not `keyof WizardFormValues`) is what makes Step
+// 2 able to trigger validation for just those two nested fields without Step 3's still-empty
+// siblings (costType, estimatedCost, ...) affecting the result. zodResolver validates the whole
+// schema on every `trigger()` call but only applies errors for the requested paths — the same
+// mechanism that already lets Step 1 trigger independently of Step 2's still-empty fields.
+export const STEP_FIELD_NAMES: Record<number, FieldPath<WizardFormValues>[]> = {
   1: ["title", "categoryId", "departmentId", "problemStatement"],
-  2: ["currentProcess", "proposedSolution", "attachments"],
+  2: [
+    "currentProcess",
+    "proposedSolution",
+    "attachments",
+    "costOfImplementation.estimatedDurationValue",
+    "costOfImplementation.estimatedDurationUnit",
+  ],
   3: ["costOfImplementation"],
   4: ["fiveW1H"],
   5: ["benefits", "businessImpact", "estimatedSavings"],

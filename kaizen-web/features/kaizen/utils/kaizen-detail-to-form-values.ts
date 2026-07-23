@@ -31,10 +31,14 @@ export function kaizenDetailToFormValues(kaizen: KaizenDetail): WizardFormValues
       mimeType: attachment.mimeType,
       cloudinarySecureUrl: attachment.cloudinarySecureUrl,
     })),
-    // Required-at-submit fields (costType, estimatedDurationUnit, the four impact levels) are
-    // allowed to come through as `undefined` here when never filled in — same as a brand-new
-    // draft's WIZARD_DEFAULT_VALUES — the zod resolver catches genuine incompleteness at
-    // submit-time, this is only ever used to seed form state, not validated directly.
+    // Required-at-submit fields (costType, estimatedDurationUnit) are allowed to come through as
+    // `undefined` here when never filled in — same as a brand-new draft's WIZARD_DEFAULT_VALUES —
+    // the zod resolver catches genuine incompleteness at submit-time, this is only ever used to
+    // seed form state, not validated directly. A Kaizen edited from before the "Number of
+    // Employees Required" / "Machines Required" / improvement-rating fields were removed may still
+    // carry those keys on `kaizen.costOfImplementation` from the API — spreading them in here is
+    // harmless (nothing reads them off the form anymore) and preserves that historical data
+    // instead of silently discarding it on an unrelated edit.
     costOfImplementation: {
       ...WIZARD_DEFAULT_VALUES.costOfImplementation,
       ...kaizen.costOfImplementation,

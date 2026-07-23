@@ -1,4 +1,4 @@
-import { COST_TYPE_OPTIONS, DURATION_UNIT_OPTIONS, IMPACT_LEVEL_LABELS } from "@/features/kaizen/constants/cost-of-implementation";
+import { COST_TYPE_OPTIONS } from "@/features/kaizen/constants/cost-of-implementation";
 import { useDepartments } from "@/features/kaizen/hooks/use-departments";
 import type { CostOfImplementation } from "@/features/kaizen/types/kaizen";
 import { formatCurrency } from "@/utils/format";
@@ -36,12 +36,6 @@ export function CostOfImplementationSummary({ cost }: CostOfImplementationSummar
             <dt className="text-muted-foreground">Type</dt>
             <dd>{COST_TYPE_OPTIONS.find((o) => o.value === cost.costType)?.label ?? "—"}</dd>
           </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">Duration</dt>
-            <dd>
-              {cost.estimatedDurationValue ?? "—"} {DURATION_UNIT_OPTIONS.find((o) => o.value === cost.estimatedDurationUnit)?.label ?? ""}
-            </dd>
-          </div>
         </dl>
       </div>
 
@@ -49,20 +43,12 @@ export function CostOfImplementationSummary({ cost }: CostOfImplementationSummar
         <p className="text-muted-foreground mb-1.5 text-xs font-medium tracking-wide uppercase">Resources</p>
         <dl className="space-y-1">
           <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">Employees Required</dt>
-            <dd>{cost.employeesRequired ?? "—"}</dd>
-          </div>
-          <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">Departments Involved</dt>
             <dd className="text-right">{involvedDepartments.length > 0 ? involvedDepartments.map((d) => d.name).join(", ") : "—"}</dd>
           </div>
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">Materials</dt>
             <dd className="text-right">{cost.materialsRequired || "—"}</dd>
-          </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">Machines</dt>
-            <dd className="text-right">{cost.machinesRequired || "—"}</dd>
           </div>
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">External Vendor</dt>
@@ -87,22 +73,6 @@ export function CostOfImplementationSummary({ cost }: CostOfImplementationSummar
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">Time Saved</dt>
             <dd>{cost.timeSavedHoursPerDay != null ? `${cost.timeSavedHoursPerDay} hrs/day` : "—"}</dd>
-          </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">Quality</dt>
-            <dd>{cost.qualityImprovement ? IMPACT_LEVEL_LABELS[cost.qualityImprovement] : "—"}</dd>
-          </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">Safety</dt>
-            <dd>{cost.safetyImprovement ? IMPACT_LEVEL_LABELS[cost.safetyImprovement] : "—"}</dd>
-          </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">Customer Satisfaction</dt>
-            <dd>{cost.customerSatisfactionImprovement ? IMPACT_LEVEL_LABELS[cost.customerSatisfactionImprovement] : "—"}</dd>
-          </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">Waste Reduction</dt>
-            <dd>{cost.wasteReductionImprovement ? IMPACT_LEVEL_LABELS[cost.wasteReductionImprovement] : "—"}</dd>
           </div>
         </dl>
       </div>

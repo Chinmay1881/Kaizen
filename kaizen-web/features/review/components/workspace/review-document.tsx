@@ -7,6 +7,7 @@ import { AttachmentGallery } from "@/features/kaizen/components/attachment-galle
 import { CostOfImplementationSummary } from "@/features/kaizen/components/cost-of-implementation-summary";
 import { KaizenStatusBadge } from "@/features/kaizen/components/kaizen-status-badge";
 import { PRESET_BENEFIT_TYPES } from "@/features/kaizen/constants/benefit-types";
+import { DURATION_UNIT_OPTIONS } from "@/features/kaizen/constants/cost-of-implementation";
 import type { CurrentUser } from "@/features/auth/types/user";
 import type { FiveW1H, KaizenDetail } from "@/features/kaizen/types/kaizen";
 import { useKaizenTimeline } from "@/features/kaizen/hooks/use-kaizen-timeline";
@@ -88,6 +89,13 @@ export const ReviewDocument = forwardRef<ReviewDocumentHandle, ReviewDocumentPro
 
       <DocumentSection eyebrow="Proposed Improvement">
         <p className="text-sm leading-relaxed whitespace-pre-wrap">{kaizen.proposedSolution || "Not provided."}</p>
+        {kaizen.costOfImplementation?.estimatedDurationValue != null ? (
+          <p className="text-muted-foreground mt-3 text-sm">
+            <span className="text-foreground font-medium">Estimated Duration:</span>{" "}
+            {kaizen.costOfImplementation.estimatedDurationValue}{" "}
+            {DURATION_UNIT_OPTIONS.find((o) => o.value === kaizen.costOfImplementation?.estimatedDurationUnit)?.label ?? ""}
+          </p>
+        ) : null}
       </DocumentSection>
 
       <DocumentSection eyebrow="Cost of Implementation">

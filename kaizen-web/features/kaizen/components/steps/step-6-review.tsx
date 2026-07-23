@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { PRESET_BENEFIT_TYPES } from "@/features/kaizen/constants/benefit-types";
-import { COST_TYPE_OPTIONS, DURATION_UNIT_OPTIONS, IMPACT_LEVEL_LABELS } from "@/features/kaizen/constants/cost-of-implementation";
+import { COST_TYPE_OPTIONS, DURATION_UNIT_OPTIONS } from "@/features/kaizen/constants/cost-of-implementation";
 import { useCategories } from "@/features/kaizen/hooks/use-categories";
 import { useDepartments } from "@/features/kaizen/hooks/use-departments";
 import type { WizardFormValues } from "@/features/kaizen/schemas/wizard-schema";
@@ -85,13 +85,19 @@ export function Step6Review({ onEditStep }: Step6ReviewProps) {
         </p>
         <p className="mb-3 whitespace-pre-wrap">{values.proposedSolution || "—"}</p>
         <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
+          Estimated Duration
+        </p>
+        <p className="mb-3">
+          {cost.estimatedDurationValue ?? "—"} {DURATION_UNIT_OPTIONS.find((o) => o.value === cost.estimatedDurationUnit)?.label ?? ""}
+        </p>
+        <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
           Attachments
         </p>
         <p>{values.attachments.length > 0 ? `${values.attachments.length} file(s) attached.` : "No attachments."}</p>
       </ReviewSection>
 
       <ReviewSection title="Cost of Implementation" step={3} onEditStep={onEditStep}>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
             <p className="text-muted-foreground mb-1.5 text-xs font-medium tracking-wide uppercase">Implementation Cost</p>
             <dl className="space-y-1">
@@ -103,22 +109,12 @@ export function Step6Review({ onEditStep }: Step6ReviewProps) {
                 <dt className="text-muted-foreground">Type</dt>
                 <dd>{COST_TYPE_OPTIONS.find((o) => o.value === cost.costType)?.label ?? "—"}</dd>
               </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Duration</dt>
-                <dd>
-                  {cost.estimatedDurationValue ?? "—"} {DURATION_UNIT_OPTIONS.find((o) => o.value === cost.estimatedDurationUnit)?.label ?? ""}
-                </dd>
-              </div>
             </dl>
           </div>
 
           <div>
             <p className="text-muted-foreground mb-1.5 text-xs font-medium tracking-wide uppercase">Resources</p>
             <dl className="space-y-1">
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Employees Required</dt>
-                <dd>{cost.employeesRequired ?? "—"}</dd>
-              </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">Departments Involved</dt>
                 <dd className="text-right">{involvedDepartments.length > 0 ? involvedDepartments.map((d) => d.name).join(", ") : "—"}</dd>
@@ -131,34 +127,12 @@ export function Step6Review({ onEditStep }: Step6ReviewProps) {
           </div>
 
           <div>
-            <p className="text-muted-foreground mb-1.5 text-xs font-medium tracking-wide uppercase">Benefits</p>
+            <p className="text-muted-foreground mb-1.5 text-xs font-medium tracking-wide uppercase">Benefits &amp; ROI</p>
             <dl className="space-y-1">
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">Annual Savings</dt>
                 <dd>{cost.estimatedAnnualSavings != null ? formatCurrency(cost.estimatedAnnualSavings) : "—"}</dd>
               </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Quality</dt>
-                <dd>{cost.qualityImprovement ? IMPACT_LEVEL_LABELS[cost.qualityImprovement] : "—"}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Safety</dt>
-                <dd>{cost.safetyImprovement ? IMPACT_LEVEL_LABELS[cost.safetyImprovement] : "—"}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Customer Satisfaction</dt>
-                <dd>{cost.customerSatisfactionImprovement ? IMPACT_LEVEL_LABELS[cost.customerSatisfactionImprovement] : "—"}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Waste Reduction</dt>
-                <dd>{cost.wasteReductionImprovement ? IMPACT_LEVEL_LABELS[cost.wasteReductionImprovement] : "—"}</dd>
-              </div>
-            </dl>
-          </div>
-
-          <div>
-            <p className="text-muted-foreground mb-1.5 text-xs font-medium tracking-wide uppercase">ROI</p>
-            <dl className="space-y-1">
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">Payback Period</dt>
                 <dd>{cost.expectedPaybackPeriod || "—"}</dd>

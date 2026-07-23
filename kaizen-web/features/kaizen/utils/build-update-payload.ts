@@ -16,17 +16,11 @@ function meaningfulCostOfImplementation(value: WizardFormValues["costOfImplement
     value.estimatedCost != null ||
     value.estimatedDurationValue != null ||
     value.estimatedDurationUnit != null ||
-    value.employeesRequired != null ||
     value.departmentIds.length > 0 ||
     Boolean(value.materialsRequired?.trim()) ||
-    Boolean(value.machinesRequired?.trim()) ||
     value.vendorRequired ||
     value.estimatedAnnualSavings != null ||
     value.timeSavedHoursPerDay != null ||
-    value.qualityImprovement != null ||
-    value.safetyImprovement != null ||
-    value.customerSatisfactionImprovement != null ||
-    value.wasteReductionImprovement != null ||
     Boolean(value.expectedPaybackPeriod?.trim()) ||
     Boolean(value.additionalNotes?.trim());
 
@@ -35,7 +29,6 @@ function meaningfulCostOfImplementation(value: WizardFormValues["costOfImplement
   return {
     ...value,
     materialsRequired: value.materialsRequired?.trim() || undefined,
-    machinesRequired: value.machinesRequired?.trim() || undefined,
     vendorDetails: value.vendorDetails?.trim() || undefined,
     expectedPaybackPeriod: value.expectedPaybackPeriod?.trim() || undefined,
     additionalNotes: value.additionalNotes?.trim() || undefined,

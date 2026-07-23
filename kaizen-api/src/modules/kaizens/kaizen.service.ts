@@ -455,6 +455,10 @@ class KaizenService {
       details.push({ field: "fiveW1H", message: "All six 5W1H questions must be answered." });
     }
 
+    // "Number of Employees Required", "Machines Required", and the four LOW/MEDIUM/HIGH
+    // improvement ratings are no longer collected by the wizard (product decision) — they stay
+    // optional columns for backward compatibility with Kaizens submitted before this change, but
+    // are deliberately not required here anymore.
     const cost = kaizen.costOfImplementation;
     const costComplete =
       cost &&
@@ -463,10 +467,6 @@ class KaizenService {
       cost.estimatedDurationValue != null &&
       cost.estimatedDurationUnit &&
       cost.estimatedAnnualSavings != null &&
-      cost.qualityImprovement &&
-      cost.safetyImprovement &&
-      cost.customerSatisfactionImprovement &&
-      cost.wasteReductionImprovement &&
       (!cost.vendorRequired || Boolean(cost.vendorDetails));
     if (!costComplete) {
       details.push({
